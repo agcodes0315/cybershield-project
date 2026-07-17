@@ -9,6 +9,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.breach import router as breach_router
+from app.api.correlation import router as correlation_router
 from app.api.email_analysis import router as email_router
 from app.api.gophish import router as gophish_router
 from app.api.recon import router as recon_router
@@ -23,12 +24,12 @@ from app.api.yara_scan import router as yara_router
 load_dotenv()
 
 
-def _allowed_origins() -> list[str]:
+def get_allowed_origins() -> list[str]:
     """
-    Read comma-separated frontend origins from the environment.
+    Read allowed frontend origins from the CORS_ORIGINS environment variable.
 
-    Local defaults support the Vite frontend during development.
-    Production should define CORS_ORIGINS explicitly.
+    Example:
+    CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
     """
     configured_origins = os.getenv(
         "CORS_ORIGINS",
@@ -49,12 +50,16 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """
     Application startup and shutdown lifecycle.
 
-    Later phases can initialise database pools, Redis connections,
-    model loading, and telemetry workers here.
+    Future production integrations such as PostgreSQL pools,
+    Redis clients, telemetry consumers, and model loading
+    can be initialised here.
     """
     app.state.service_name = "cybershield-detection-engine"
-    app.state.service_version = "2.1.0"
-    app.state.environment = os.getenv("APP_ENV", "development")
+    app.state.service_version = "2.2.0"
+    app.state.environment = os.getenv(
+        "APP_ENV",
+        "development",
+    )
 
     yield
 
@@ -62,11 +67,12 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 app = FastAPI(
     title="CyberShield CNI Detection Engine",
     description=(
-        "AI-driven behavioural anomaly detection, threat intelligence, "
-        "attack-chain analysis, and cyber-resilience services for "
-        "critical national infrastructure."
+        "AI-driven cyber-resilience platform for critical national "
+        "infrastructure. Provides behavioural anomaly detection, "
+        "MITRE ATT&CK mapping, weak-signal correlation, threat "
+        "intelligence, vulnerability analysis, and security scanning."
     ),
-    version="2.1.0",
+    version="2.2.0",
     docs_url="/docs",
     redoc_url="/redoc",
     openapi_url="/openapi.json",
@@ -76,9 +82,16 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=_allowed_origins(),
+    allow_origins=get_allowed_origins(),
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_methods=[
+        "GET",
+        "POST",
+        "PUT",
+        "PATCH",
+        "DELETE",
+        "OPTIONS",
+    ],
     allow_headers=[
         "Authorization",
         "Content-Type",
@@ -97,18 +110,25 @@ app.add_middleware(
 def root() -> dict[str, Any]:
     return {
         "service": "CyberShield CNI Detection Engine",
-        "version": "2.1.0",
+        "version": "2.2.0",
         "status": "running",
+        "environment": os.getenv(
+            "APP_ENV",
+            "development",
+        ),
         "documentation": "/docs",
         "capabilities": [
             "URL threat detection",
-            "Email-header analysis",
-            "Threat intelligence",
+            "Email header analysis",
+            "Threat intelligence aggregation",
             "Network reconnaissance",
             "YARA scanning",
             "Breach intelligence",
             "Vulnerability scanning",
             "UEBA behavioural anomaly detection",
+            "MITRE ATT&CK technique mapping",
+            "Weak-signal attack correlation",
+            "Incident timeline generation",
         ],
     }
 
@@ -122,8 +142,11 @@ def health() -> dict[str, Any]:
     return {
         "status": "healthy",
         "service": "detection-engine",
-        "version": "2.1.0",
-        "environment": os.getenv("APP_ENV", "development"),
+        "version": "2.2.0",
+        "environment": os.getenv(
+            "APP_ENV",
+            "development",
+        ),
     }
 
 
@@ -133,18 +156,14 @@ def health() -> dict[str, Any]:
     summary="Service readiness check",
 )
 def readiness() -> dict[str, Any]:
-    """
-    Kubernetes and cloud-container readiness endpoint.
-
-    Database, Redis, and model readiness checks will be added when those
-    production adapters are introduced.
-    """
     return {
         "status": "ready",
         "service": "detection-engine",
         "checks": {
             "api": True,
             "ueba_module": True,
+            "mitre_module": True,
+            "correlation_module": True,
         },
     }
 
@@ -194,6 +213,6 @@ app.include_router(
     prefix="/api/vuln",
 )
 
-# The UEBA router already defines prefix="/api/ueba",
-# so no second prefix is added here.
+# These routers already define their own prefixes.
 app.include_router(ueba_router)
+app.include_router(correlation_router)
