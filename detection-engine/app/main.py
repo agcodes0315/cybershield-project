@@ -13,6 +13,7 @@ from app.api.breach import router as breach_router
 from app.api.correlation import router as correlation_router
 from app.api.email_analysis import router as email_router
 from app.api.gophish import router as gophish_router
+from app.api.prediction import router as prediction_router
 from app.api.recon import router as recon_router
 from app.api.reports import router as reports_router
 from app.api.scan import router as scan_router
@@ -45,7 +46,7 @@ async def lifespan(
     app.state.service_name = (
         "cybershield-detection-engine"
     )
-    app.state.service_version = "2.5.0"
+    app.state.service_version = "3.0.0"
     app.state.environment = os.getenv(
         "APP_ENV",
         "development",
@@ -59,11 +60,11 @@ app = FastAPI(
     description=(
         "AI-driven cyber-resilience platform for critical national "
         "infrastructure. Provides behavioural anomaly detection, "
-        "MITRE ATT&CK correlation, attack-path intelligence, "
-        "blast-radius analysis, remediation prioritisation, "
-        "threat intelligence, and security scanning."
+        "MITRE ATT&CK correlation, predictive attack intelligence, "
+        "attack-path analysis, blast-radius simulation, remediation "
+        "prioritisation, and security-scanning services."
     ),
-    version="2.5.0",
+    version="3.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
     openapi_url="/openapi.json",
@@ -101,7 +102,7 @@ app.add_middleware(
 def root() -> dict[str, Any]:
     return {
         "service": "CyberShield CNI Detection Engine",
-        "version": "2.5.0",
+        "version": "3.0.0",
         "status": "running",
         "environment": os.getenv(
             "APP_ENV",
@@ -118,12 +119,14 @@ def root() -> dict[str, Any]:
             "Vulnerability scanning",
             "UEBA behavioural anomaly detection",
             "MITRE ATT&CK technique mapping",
-            "Weak-signal attack correlation",
+            "Weak-signal incident correlation",
+            "Viterbi next-stage attack prediction",
+            "Architecture-aware target prediction",
             "Adjacency-list infrastructure modelling",
             "BFS minimum-hop attack paths",
             "Dijkstra lowest-resistance paths",
             "DFS blast-radius analysis",
-            "Containment impact simulation",
+            "Containment-impact simulation",
             "Priority-queue remediation ranking",
         ],
     }
@@ -138,7 +141,7 @@ def health() -> dict[str, Any]:
     return {
         "status": "healthy",
         "service": "detection-engine",
-        "version": "2.5.0",
+        "version": "3.0.0",
         "environment": os.getenv(
             "APP_ENV",
             "development",
@@ -164,6 +167,8 @@ def readiness() -> dict[str, Any]:
             "pathfinder_module": True,
             "blast_radius_module": True,
             "remediation_module": True,
+            "prediction_module": True,
+            "viterbi_module": True,
         },
     }
 
@@ -217,3 +222,4 @@ app.include_router(
 app.include_router(ueba_router)
 app.include_router(correlation_router)
 app.include_router(attack_graph_router)
+app.include_router(prediction_router)
