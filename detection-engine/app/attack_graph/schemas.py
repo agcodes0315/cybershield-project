@@ -123,13 +123,6 @@ class AttackGraphEdge(BaseModel):
 
     @property
     def attacker_cost(self) -> float:
-        """
-        Lower cost means an easier attacker route.
-
-        Resistance increases attacker cost.
-        Trust lowers attacker cost because trusted relationships
-        are generally easier to abuse after compromise.
-        """
         cost = (
             0.75 * self.resistance
             + 0.25 * (1.0 - self.trust_level)
@@ -233,3 +226,90 @@ class CriticalAssetPathResult(BaseModel):
     path: AttackPathResult | None = None
 
     searched_target_count: int = Field(ge=0)
+
+
+class BlastRadiusNode(BaseModel):
+    node_id: str
+    node_name: str
+    node_type: GraphNodeType
+    criticality: AssetCriticality
+
+    depth: int = Field(ge=0)
+
+    parent_node_id: str | None = None
+    incoming_connection: ConnectionType | None = None
+
+    node_risk_score: float = Field(
+        ge=0.0,
+        le=1.0,
+    )
+
+    business_impact_score: float = Field(
+        ge=0.0,
+        le=1.0,
+    )
+
+    compromised: bool = False
+
+
+class BlastRadiusResult(BaseModel):
+    source_id: str
+
+    reachable_node_count: int = Field(ge=0)
+    critical_node_count: int = Field(ge=0)
+    high_or_critical_node_count: int = Field(ge=0)
+
+    maximum_depth: int = Field(ge=0)
+
+    cumulative_business_impact: float = Field(
+        ge=0.0,
+    )
+
+    average_risk_score: float = Field(
+        ge=0.0,
+        le=1.0,
+    )
+
+    blast_radius_score: float = Field(
+        ge=0.0,
+        le=1.0,
+    )
+
+    reachable_nodes: list[BlastRadiusNode] = Field(
+        default_factory=list
+    )
+
+    critical_assets_at_risk: list[str] = Field(
+        default_factory=list
+    )
+
+    traversal_order: list[str] = Field(
+        default_factory=list
+    )
+
+    explanation: str
+
+
+class ContainmentComparison(BaseModel):
+    source_id: str
+
+    before: BlastRadiusResult
+    after: BlastRadiusResult
+
+    removed_reachable_nodes: int = Field(ge=0)
+    removed_critical_nodes: int = Field(ge=0)
+
+    business_impact_reduction: float = Field(
+        ge=0.0,
+    )
+
+    blast_radius_reduction: float = Field(
+        ge=0.0,
+        le=1.0,
+    )
+
+    disabled_connections: list[str] = Field(
+        default_factory=list
+    )
+
+    recommendation: str

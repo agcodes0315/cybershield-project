@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.attack_graph import router as attack_graph_router
 from app.api.breach import router as breach_router
 from app.api.correlation import router as correlation_router
 from app.api.email_analysis import router as email_router
@@ -25,37 +26,26 @@ load_dotenv()
 
 
 def get_allowed_origins() -> list[str]:
-    """
-    Read allowed frontend origins from the CORS_ORIGINS environment variable.
-
-    Example:
-    CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
-    """
     configured_origins = os.getenv(
         "CORS_ORIGINS",
         "http://localhost:5173,http://127.0.0.1:5173",
     )
 
-    origins = [
+    return [
         origin.strip()
         for origin in configured_origins.split(",")
         if origin.strip()
     ]
 
-    return origins
-
 
 @asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    """
-    Application startup and shutdown lifecycle.
-
-    Future production integrations such as PostgreSQL pools,
-    Redis clients, telemetry consumers, and model loading
-    can be initialised here.
-    """
-    app.state.service_name = "cybershield-detection-engine"
-    app.state.service_version = "2.2.0"
+async def lifespan(
+    app: FastAPI,
+) -> AsyncIterator[None]:
+    app.state.service_name = (
+        "cybershield-detection-engine"
+    )
+    app.state.service_version = "2.5.0"
     app.state.environment = os.getenv(
         "APP_ENV",
         "development",
@@ -69,10 +59,11 @@ app = FastAPI(
     description=(
         "AI-driven cyber-resilience platform for critical national "
         "infrastructure. Provides behavioural anomaly detection, "
-        "MITRE ATT&CK mapping, weak-signal correlation, threat "
-        "intelligence, vulnerability analysis, and security scanning."
+        "MITRE ATT&CK correlation, attack-path intelligence, "
+        "blast-radius analysis, remediation prioritisation, "
+        "threat intelligence, and security scanning."
     ),
-    version="2.2.0",
+    version="2.5.0",
     docs_url="/docs",
     redoc_url="/redoc",
     openapi_url="/openapi.json",
@@ -110,7 +101,7 @@ app.add_middleware(
 def root() -> dict[str, Any]:
     return {
         "service": "CyberShield CNI Detection Engine",
-        "version": "2.2.0",
+        "version": "2.5.0",
         "status": "running",
         "environment": os.getenv(
             "APP_ENV",
@@ -119,8 +110,8 @@ def root() -> dict[str, Any]:
         "documentation": "/docs",
         "capabilities": [
             "URL threat detection",
-            "Email header analysis",
-            "Threat intelligence aggregation",
+            "Email-header analysis",
+            "Threat-intelligence aggregation",
             "Network reconnaissance",
             "YARA scanning",
             "Breach intelligence",
@@ -128,7 +119,12 @@ def root() -> dict[str, Any]:
             "UEBA behavioural anomaly detection",
             "MITRE ATT&CK technique mapping",
             "Weak-signal attack correlation",
-            "Incident timeline generation",
+            "Adjacency-list infrastructure modelling",
+            "BFS minimum-hop attack paths",
+            "Dijkstra lowest-resistance paths",
+            "DFS blast-radius analysis",
+            "Containment impact simulation",
+            "Priority-queue remediation ranking",
         ],
     }
 
@@ -142,7 +138,7 @@ def health() -> dict[str, Any]:
     return {
         "status": "healthy",
         "service": "detection-engine",
-        "version": "2.2.0",
+        "version": "2.5.0",
         "environment": os.getenv(
             "APP_ENV",
             "development",
@@ -164,6 +160,10 @@ def readiness() -> dict[str, Any]:
             "ueba_module": True,
             "mitre_module": True,
             "correlation_module": True,
+            "attack_graph_module": True,
+            "pathfinder_module": True,
+            "blast_radius_module": True,
+            "remediation_module": True,
         },
     }
 
@@ -213,6 +213,7 @@ app.include_router(
     prefix="/api/vuln",
 )
 
-# These routers already define their own prefixes.
+# These routers define their own complete API prefixes.
 app.include_router(ueba_router)
 app.include_router(correlation_router)
+app.include_router(attack_graph_router)
