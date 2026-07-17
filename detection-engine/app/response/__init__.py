@@ -2,6 +2,17 @@ from .approval import (
     ApprovalEngine,
     approval_engine,
 )
+from .audit import (
+    GENESIS_HASH,
+    AuditActorType,
+    AuditEventType,
+    AuditLedgerSummary,
+    AuditRecord,
+    AuditVerificationResult,
+    TamperEvidentAuditLedger,
+    audit_ledger,
+)
+from .executor import SafeResponseExecutor
 from .playbooks import (
     PlaybookRegistry,
     build_default_actions,
@@ -27,6 +38,10 @@ from .schemas import (
     ResponseTarget,
     StepApprovalState,
 )
+from .service import (
+    ResponseOrchestrationService,
+    response_orchestration_service,
+)
 
 __all__ = [
     "ApprovalDecision",
@@ -34,7 +49,13 @@ __all__ = [
     "ApprovalMode",
     "ApprovalRecord",
     "ApprovalStatus",
+    "AuditActorType",
+    "AuditEventType",
+    "AuditLedgerSummary",
+    "AuditRecord",
+    "AuditVerificationResult",
     "ExecutionStatus",
+    "GENESIS_HASH",
     "PlaybookCategory",
     "PlaybookRegistry",
     "PlaybookRegistrySummary",
@@ -42,14 +63,19 @@ __all__ = [
     "ResponseActionType",
     "ResponseExecution",
     "ResponseExecutionRequest",
+    "ResponseOrchestrationService",
     "ResponsePlaybook",
     "ResponsePlaybookStep",
     "ResponseRiskLevel",
     "ResponseStepExecution",
     "ResponseTarget",
+    "SafeResponseExecutor",
     "StepApprovalState",
+    "TamperEvidentAuditLedger",
     "approval_engine",
+    "audit_ledger",
     "build_default_actions",
     "build_default_playbooks",
     "playbook_registry",
+    "response_orchestration_service",
 ]
