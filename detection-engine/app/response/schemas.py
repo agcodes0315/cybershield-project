@@ -26,6 +26,13 @@ class ApprovalMode(str, Enum):
     DUAL_APPROVAL_REQUIRED = "dual_approval_required"
 
 
+class ApprovalStatus(str, Enum):
+    NOT_REQUIRED = "not_required"
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+
+
 class ResponseRiskLevel(str, Enum):
     LOW = "low"
     MEDIUM = "medium"
@@ -79,6 +86,7 @@ class ResponseActionDefinition(BaseModel):
     risk_level: ResponseRiskLevel
 
     reversible: bool = False
+
     estimated_execution_seconds: int = Field(
         default=30,
         ge=0,
@@ -168,6 +176,57 @@ class ResponseExecutionRequest(BaseModel):
     dry_run: bool = True
 
 
+class ApprovalRecord(BaseModel):
+    approver_id: str = Field(min_length=1)
+
+    approved: bool
+    reason: str | None = None
+
+    decided_at: datetime = Field(
+        default_factory=lambda: datetime.now(
+            timezone.utc
+        )
+    )
+
+
+class StepApprovalState(BaseModel):
+    execution_step_id: str
+
+    approval_mode: ApprovalMode
+    status: ApprovalStatus
+
+    required_approval_count: int = Field(
+        ge=0,
+        le=2,
+    )
+
+    approval_count: int = Field(
+        ge=0,
+        le=2,
+    )
+
+    rejection_count: int = Field(ge=0)
+
+    approved_by: list[str] = Field(
+        default_factory=list
+    )
+
+    rejected_by: list[str] = Field(
+        default_factory=list
+    )
+
+    decisions: list[ApprovalRecord] = Field(
+        default_factory=list
+    )
+
+    remaining_approval_count: int = Field(
+        ge=0,
+        le=2,
+    )
+
+    can_execute: bool = False
+
+
 class ResponseStepExecution(BaseModel):
     execution_step_id: str
 
@@ -179,12 +238,24 @@ class ResponseStepExecution(BaseModel):
     status: ExecutionStatus
 
     approval_mode: ApprovalMode
+    approval_status: ApprovalStatus
+
+    required_approval_count: int = Field(
+        default=0,
+        ge=0,
+        le=2,
+    )
+
     risk_level: ResponseRiskLevel
 
     started_at: datetime | None = None
     completed_at: datetime | None = None
 
     approved_by: list[str] = Field(
+        default_factory=list
+    )
+
+    rejected_by: list[str] = Field(
         default_factory=list
     )
 

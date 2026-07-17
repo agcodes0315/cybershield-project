@@ -1,3 +1,7 @@
+from .approval import (
+    ApprovalEngine,
+    approval_engine,
+)
 from .playbooks import (
     PlaybookRegistry,
     build_default_actions,
@@ -7,6 +11,8 @@ from .playbooks import (
 from .schemas import (
     ApprovalDecision,
     ApprovalMode,
+    ApprovalRecord,
+    ApprovalStatus,
     ExecutionStatus,
     PlaybookCategory,
     PlaybookRegistrySummary,
@@ -19,11 +25,15 @@ from .schemas import (
     ResponseRiskLevel,
     ResponseStepExecution,
     ResponseTarget,
+    StepApprovalState,
 )
 
 __all__ = [
     "ApprovalDecision",
+    "ApprovalEngine",
     "ApprovalMode",
+    "ApprovalRecord",
+    "ApprovalStatus",
     "ExecutionStatus",
     "PlaybookCategory",
     "PlaybookRegistry",
@@ -37,6 +47,8 @@ __all__ = [
     "ResponseRiskLevel",
     "ResponseStepExecution",
     "ResponseTarget",
+    "StepApprovalState",
+    "approval_engine",
     "build_default_actions",
     "build_default_playbooks",
     "playbook_registry",
