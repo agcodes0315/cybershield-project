@@ -1,0 +1,116 @@
+﻿from app.assets.schemas import Asset, AssetCriticality, AssetType
+from app.assets.service import AssetInventoryService
+
+
+def build_asset_inventory() -> AssetInventoryService:
+    inventory = AssetInventoryService()
+
+    assets = [
+        Asset(
+            asset_id="IDP-001",
+            name="Government Identity Provider",
+            asset_type=AssetType.IDENTITY_PROVIDER,
+            criticality=AssetCriticality.CRITICAL,
+            ip_address="10.0.0.10",
+            hostname="idp.gov-demo.local",
+            network_zone="identity",
+            owner_department="IT Security",
+            data_classification="restricted",
+            contains_sensitive_data=True,
+            tags=["identity", "authentication", "critical"],
+        ),
+        Asset(
+            asset_id="DEV-018",
+            name="Examination Staff Workstation",
+            asset_type=AssetType.USER_DEVICE,
+            criticality=AssetCriticality.MEDIUM,
+            ip_address="10.0.1.18",
+            hostname="exam-ws-018",
+            network_zone="employee",
+            owner_department="Examinations",
+            data_classification="internal",
+            tags=["workstation", "staff"],
+        ),
+        Asset(
+            asset_id="PORTAL-001",
+            name="Public Student Portal",
+            asset_type=AssetType.APPLICATION_SERVER,
+            criticality=AssetCriticality.HIGH,
+            ip_address="10.0.2.10",
+            hostname="student-portal.gov-demo.local",
+            network_zone="dmz",
+            owner_department="Digital Services",
+            data_classification="public",
+            internet_exposed=True,
+            tags=["public", "portal", "dmz"],
+        ),
+        Asset(
+            asset_id="EXAM-APP-01",
+            name="Examination Application Server",
+            asset_type=AssetType.APPLICATION_SERVER,
+            criticality=AssetCriticality.CRITICAL,
+            ip_address="10.0.3.20",
+            hostname="exam-app-01.gov-demo.local",
+            network_zone="application",
+            owner_department="Examinations",
+            data_classification="confidential",
+            contains_sensitive_data=True,
+            tags=["exam", "application", "critical"],
+        ),
+        Asset(
+            asset_id="EXAM-DB-01",
+            name="Examination Records Database",
+            asset_type=AssetType.DATABASE,
+            criticality=AssetCriticality.CRITICAL,
+            ip_address="10.0.4.30",
+            hostname="exam-db-01.gov-demo.local",
+            network_zone="database",
+            owner_department="Examinations",
+            data_classification="restricted",
+            contains_sensitive_data=True,
+            tags=["database", "student-records", "critical"],
+        ),
+        Asset(
+            asset_id="QUESTION-REPO-01",
+            name="Question Paper Repository",
+            asset_type=AssetType.FILE_SERVER,
+            criticality=AssetCriticality.CRITICAL,
+            ip_address="10.0.4.40",
+            hostname="question-repo-01.gov-demo.local",
+            network_zone="restricted",
+            owner_department="Examinations",
+            data_classification="restricted",
+            contains_sensitive_data=True,
+            tags=["question-paper", "restricted", "critical"],
+        ),
+        Asset(
+            asset_id="BACKUP-01",
+            name="Immutable Backup Server",
+            asset_type=AssetType.BACKUP_SERVER,
+            criticality=AssetCriticality.HIGH,
+            ip_address="10.0.5.50",
+            hostname="backup-01.gov-demo.local",
+            network_zone="backup",
+            owner_department="Infrastructure",
+            data_classification="confidential",
+            contains_sensitive_data=True,
+            tags=["backup", "recovery"],
+        ),
+        Asset(
+            asset_id="SOC-001",
+            name="CyberShield SOC Console",
+            asset_type=AssetType.SECURITY_TOOL,
+            criticality=AssetCriticality.HIGH,
+            ip_address="10.0.6.10",
+            hostname="soc-01.gov-demo.local",
+            network_zone="security",
+            owner_department="SOC",
+            data_classification="confidential",
+            tags=["soc", "monitoring"],
+        ),
+    ]
+
+    for asset in assets:
+        inventory.register(asset)
+
+    return inventory
