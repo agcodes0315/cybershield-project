@@ -1,39 +1,9 @@
 [
   {
     "event_id": "EVT-BASELINE-000251",
-    "timestamp": "2026-07-17T09:45:19.709607+00:00",
-    "source_type": "authentication",
-    "event_type": "login_success",
-    "severity": "info",
-    "organisation_id": "ORG-DEMO-001",
-    "user_id": "USR-104",
-    "username": "anita.sharma",
-    "device_id": "DEV-018",
-    "department": "Examinations",
-    "source_ip": "10.0.1.18",
-    "asset_id": "EXAM-APP-01",
-    "anomaly_score": 0.1004,
-    "confidence": 0.95,
-    "label": "normal",
-    "scenario_id": "USER-BASELINE",
-    "attributes": {
-      "login_hour": 10,
-      "new_device": false,
-      "new_location": false,
-      "failed_login_count": 0,
-      "encoded_command": false,
-      "data_transfer_mb": 10.03
-    },
-    "tags": [
-      "synthetic",
-      "baseline"
-    ]
-  },
-  {
-    "event_id": "EVT-BASELINE-000252",
-    "timestamp": "2026-07-17T10:00:19.709607+00:00",
-    "source_type": "authentication",
-    "event_type": "login_success",
+    "timestamp": "2026-07-17T09:57:54.325188+00:00",
+    "source_type": "endpoint",
+    "event_type": "application_access",
     "severity": "info",
     "organisation_id": "ORG-DEMO-001",
     "user_id": "USR-104",
@@ -47,11 +17,12 @@
     "label": "normal",
     "scenario_id": "USER-BASELINE",
     "attributes": {
-      "login_hour": 11,
+      "login_hour": 10,
       "new_device": false,
       "new_location": false,
       "failed_login_count": 0,
       "encoded_command": false,
+      "privileged_action": false,
       "data_transfer_mb": 1.89
     },
     "tags": [
@@ -60,70 +31,41 @@
     ]
   },
   {
+    "event_id": "EVT-BASELINE-000252",
+    "timestamp": "2026-07-17T10:12:54.325188+00:00",
+    "source_type": "network",
+    "event_type": "internal_connection",
+    "severity": "info",
+    "organisation_id": "ORG-DEMO-001",
+    "user_id": "USR-104",
+    "username": "anita.sharma",
+    "device_id": "DEV-018",
+    "department": "Examinations",
+    "source_ip": "10.0.1.18",
+    "asset_id": "EXAM-APP-01",
+    "anomaly_score": 0.0596,
+    "confidence": 0.95,
+    "label": "normal",
+    "scenario_id": "USER-BASELINE",
+    "attributes": {
+      "login_hour": 11,
+      "new_device": false,
+      "new_location": false,
+      "failed_login_count": 0,
+      "encoded_command": false,
+      "privileged_action": false,
+      "data_transfer_mb": 9.03
+    },
+    "tags": [
+      "synthetic",
+      "baseline"
+    ]
+  },
+  {
     "event_id": "EVT-BASELINE-000253",
-    "timestamp": "2026-07-17T10:15:19.709607+00:00",
-    "source_type": "authentication",
-    "event_type": "login_success",
-    "severity": "info",
-    "organisation_id": "ORG-DEMO-001",
-    "user_id": "USR-104",
-    "username": "anita.sharma",
-    "device_id": "DEV-018",
-    "department": "Examinations",
-    "source_ip": "10.0.1.18",
-    "asset_id": "EXAM-APP-01",
-    "anomaly_score": 0.0696,
-    "confidence": 0.95,
-    "label": "normal",
-    "scenario_id": "USER-BASELINE",
-    "attributes": {
-      "login_hour": 12,
-      "new_device": false,
-      "new_location": false,
-      "failed_login_count": 0,
-      "encoded_command": false,
-      "data_transfer_mb": 13.2
-    },
-    "tags": [
-      "synthetic",
-      "baseline"
-    ]
-  },
-  {
-    "event_id": "EVT-BASELINE-000254",
-    "timestamp": "2026-07-17T10:30:19.709607+00:00",
-    "source_type": "authentication",
-    "event_type": "login_success",
-    "severity": "info",
-    "organisation_id": "ORG-DEMO-001",
-    "user_id": "USR-104",
-    "username": "anita.sharma",
-    "device_id": "DEV-018",
-    "department": "Examinations",
-    "source_ip": "10.0.1.18",
-    "asset_id": "EXAM-APP-01",
-    "anomaly_score": 0.0321,
-    "confidence": 0.95,
-    "label": "normal",
-    "scenario_id": "USER-BASELINE",
-    "attributes": {
-      "login_hour": 13,
-      "new_device": false,
-      "new_location": false,
-      "failed_login_count": 0,
-      "encoded_command": false,
-      "data_transfer_mb": 14.1
-    },
-    "tags": [
-      "synthetic",
-      "baseline"
-    ]
-  },
-  {
-    "event_id": "EVT-BASELINE-000255",
-    "timestamp": "2026-07-17T10:45:19.709607+00:00",
-    "source_type": "authentication",
-    "event_type": "login_success",
+    "timestamp": "2026-07-17T10:27:54.325188+00:00",
+    "source_type": "endpoint",
+    "event_type": "application_access",
     "severity": "info",
     "organisation_id": "ORG-DEMO-001",
     "user_id": "USR-104",
@@ -137,11 +79,12 @@
     "label": "normal",
     "scenario_id": "USER-BASELINE",
     "attributes": {
-      "login_hour": 14,
+      "login_hour": 12,
       "new_device": false,
       "new_location": false,
       "failed_login_count": 0,
       "encoded_command": false,
+      "privileged_action": false,
       "data_transfer_mb": 10.36
     },
     "tags": [
@@ -150,10 +93,10 @@
     ]
   },
   {
-    "event_id": "EVT-BASELINE-000256",
-    "timestamp": "2026-07-17T11:00:19.709607+00:00",
-    "source_type": "authentication",
-    "event_type": "login_success",
+    "event_id": "EVT-BASELINE-000254",
+    "timestamp": "2026-07-17T10:42:54.325188+00:00",
+    "source_type": "endpoint",
+    "event_type": "application_access",
     "severity": "info",
     "organisation_id": "ORG-DEMO-001",
     "user_id": "USR-104",
@@ -162,17 +105,18 @@
     "department": "Examinations",
     "source_ip": "10.0.1.18",
     "asset_id": "EXAM-APP-01",
-    "anomaly_score": 0.1315,
+    "anomaly_score": 0.0688,
     "confidence": 0.95,
     "label": "normal",
     "scenario_id": "USER-BASELINE",
     "attributes": {
-      "login_hour": 15,
+      "login_hour": 13,
       "new_device": false,
       "new_location": false,
       "failed_login_count": 0,
       "encoded_command": false,
-      "data_transfer_mb": 7.92
+      "privileged_action": false,
+      "data_transfer_mb": 16.9
     },
     "tags": [
       "synthetic",
@@ -180,40 +124,10 @@
     ]
   },
   {
-    "event_id": "EVT-BASELINE-000257",
-    "timestamp": "2026-07-17T11:15:19.709607+00:00",
-    "source_type": "authentication",
-    "event_type": "login_success",
-    "severity": "info",
-    "organisation_id": "ORG-DEMO-001",
-    "user_id": "USR-104",
-    "username": "anita.sharma",
-    "device_id": "DEV-018",
-    "department": "Examinations",
-    "source_ip": "10.0.1.18",
-    "asset_id": "EXAM-APP-01",
-    "anomaly_score": 0.1322,
-    "confidence": 0.95,
-    "label": "normal",
-    "scenario_id": "USER-BASELINE",
-    "attributes": {
-      "login_hour": 16,
-      "new_device": false,
-      "new_location": false,
-      "failed_login_count": 0,
-      "encoded_command": false,
-      "data_transfer_mb": 15.93
-    },
-    "tags": [
-      "synthetic",
-      "baseline"
-    ]
-  },
-  {
-    "event_id": "EVT-BASELINE-000258",
-    "timestamp": "2026-07-17T11:30:19.709607+00:00",
-    "source_type": "authentication",
-    "event_type": "login_success",
+    "event_id": "EVT-BASELINE-000255",
+    "timestamp": "2026-07-17T10:57:54.325188+00:00",
+    "source_type": "network",
+    "event_type": "internal_connection",
     "severity": "info",
     "organisation_id": "ORG-DEMO-001",
     "user_id": "USR-104",
@@ -227,11 +141,12 @@
     "label": "normal",
     "scenario_id": "USER-BASELINE",
     "attributes": {
-      "login_hour": 10,
+      "login_hour": 14,
       "new_device": false,
       "new_location": false,
       "failed_login_count": 0,
       "encoded_command": false,
+      "privileged_action": false,
       "data_transfer_mb": 4.39
     },
     "tags": [
@@ -240,8 +155,39 @@
     ]
   },
   {
-    "event_id": "EVT-BASELINE-000259",
-    "timestamp": "2026-07-17T11:45:19.709607+00:00",
+    "event_id": "EVT-BASELINE-000256",
+    "timestamp": "2026-07-17T11:12:54.325188+00:00",
+    "source_type": "endpoint",
+    "event_type": "file_read",
+    "severity": "info",
+    "organisation_id": "ORG-DEMO-001",
+    "user_id": "USR-104",
+    "username": "anita.sharma",
+    "device_id": "DEV-018",
+    "department": "Examinations",
+    "source_ip": "10.0.1.18",
+    "asset_id": "EXAM-APP-01",
+    "anomaly_score": 0.0585,
+    "confidence": 0.95,
+    "label": "normal",
+    "scenario_id": "USER-BASELINE",
+    "attributes": {
+      "login_hour": 15,
+      "new_device": false,
+      "new_location": false,
+      "failed_login_count": 0,
+      "encoded_command": false,
+      "privileged_action": false,
+      "data_transfer_mb": 11.98
+    },
+    "tags": [
+      "synthetic",
+      "baseline"
+    ]
+  },
+  {
+    "event_id": "EVT-BASELINE-000257",
+    "timestamp": "2026-07-17T11:27:54.325188+00:00",
     "source_type": "authentication",
     "event_type": "login_success",
     "severity": "info",
@@ -252,7 +198,69 @@
     "department": "Examinations",
     "source_ip": "10.0.1.18",
     "asset_id": "EXAM-APP-01",
-    "anomaly_score": 0.1357,
+    "anomaly_score": 0.0983,
+    "confidence": 0.95,
+    "label": "normal",
+    "scenario_id": "USER-BASELINE",
+    "attributes": {
+      "login_hour": 16,
+      "new_device": false,
+      "new_location": false,
+      "failed_login_count": 0,
+      "encoded_command": false,
+      "privileged_action": false,
+      "data_transfer_mb": 4.95
+    },
+    "tags": [
+      "synthetic",
+      "baseline"
+    ]
+  },
+  {
+    "event_id": "EVT-BASELINE-000258",
+    "timestamp": "2026-07-17T11:42:54.325188+00:00",
+    "source_type": "authentication",
+    "event_type": "login_success",
+    "severity": "info",
+    "organisation_id": "ORG-DEMO-001",
+    "user_id": "USR-104",
+    "username": "anita.sharma",
+    "device_id": "DEV-018",
+    "department": "Examinations",
+    "source_ip": "10.0.1.18",
+    "asset_id": "EXAM-APP-01",
+    "anomaly_score": 0.1296,
+    "confidence": 0.95,
+    "label": "normal",
+    "scenario_id": "USER-BASELINE",
+    "attributes": {
+      "login_hour": 10,
+      "new_device": false,
+      "new_location": false,
+      "failed_login_count": 0,
+      "encoded_command": false,
+      "privileged_action": false,
+      "data_transfer_mb": 3.98
+    },
+    "tags": [
+      "synthetic",
+      "baseline"
+    ]
+  },
+  {
+    "event_id": "EVT-BASELINE-000259",
+    "timestamp": "2026-07-17T11:57:54.325188+00:00",
+    "source_type": "endpoint",
+    "event_type": "application_access",
+    "severity": "info",
+    "organisation_id": "ORG-DEMO-001",
+    "user_id": "USR-104",
+    "username": "anita.sharma",
+    "device_id": "DEV-018",
+    "department": "Examinations",
+    "source_ip": "10.0.1.18",
+    "asset_id": "EXAM-APP-01",
+    "anomaly_score": 0.1321,
     "confidence": 0.95,
     "label": "normal",
     "scenario_id": "USER-BASELINE",
@@ -262,7 +270,8 @@
       "new_location": false,
       "failed_login_count": 0,
       "encoded_command": false,
-      "data_transfer_mb": 6.46
+      "privileged_action": false,
+      "data_transfer_mb": 1.62
     },
     "tags": [
       "synthetic",
@@ -271,9 +280,9 @@
   },
   {
     "event_id": "EVT-BASELINE-000260",
-    "timestamp": "2026-07-17T12:00:19.709607+00:00",
-    "source_type": "authentication",
-    "event_type": "login_success",
+    "timestamp": "2026-07-17T12:12:54.325188+00:00",
+    "source_type": "network",
+    "event_type": "internal_connection",
     "severity": "info",
     "organisation_id": "ORG-DEMO-001",
     "user_id": "USR-104",
@@ -282,7 +291,7 @@
     "department": "Examinations",
     "source_ip": "10.0.1.18",
     "asset_id": "EXAM-APP-01",
-    "anomaly_score": 0.0975,
+    "anomaly_score": 0.1146,
     "confidence": 0.95,
     "label": "normal",
     "scenario_id": "USER-BASELINE",
@@ -292,7 +301,8 @@
       "new_location": false,
       "failed_login_count": 0,
       "encoded_command": false,
-      "data_transfer_mb": 16.43
+      "privileged_action": false,
+      "data_transfer_mb": 4.17
     },
     "tags": [
       "synthetic",
@@ -301,9 +311,9 @@
   },
   {
     "event_id": "EVT-BASELINE-000261",
-    "timestamp": "2026-07-17T12:15:19.709607+00:00",
-    "source_type": "authentication",
-    "event_type": "login_success",
+    "timestamp": "2026-07-17T12:27:54.325188+00:00",
+    "source_type": "endpoint",
+    "event_type": "file_read",
     "severity": "info",
     "organisation_id": "ORG-DEMO-001",
     "user_id": "USR-104",
@@ -312,7 +322,7 @@
     "department": "Examinations",
     "source_ip": "10.0.1.18",
     "asset_id": "EXAM-APP-01",
-    "anomaly_score": 0.0307,
+    "anomaly_score": 0.1252,
     "confidence": 0.95,
     "label": "normal",
     "scenario_id": "USER-BASELINE",
@@ -322,7 +332,8 @@
       "new_location": false,
       "failed_login_count": 0,
       "encoded_command": false,
-      "data_transfer_mb": 10.76
+      "privileged_action": false,
+      "data_transfer_mb": 1.16
     },
     "tags": [
       "synthetic",
@@ -331,7 +342,7 @@
   },
   {
     "event_id": "EVT-BASELINE-000262",
-    "timestamp": "2026-07-17T12:30:19.709607+00:00",
+    "timestamp": "2026-07-17T12:42:54.325188+00:00",
     "source_type": "authentication",
     "event_type": "login_success",
     "severity": "info",
@@ -342,7 +353,7 @@
     "department": "Examinations",
     "source_ip": "10.0.1.18",
     "asset_id": "EXAM-APP-01",
-    "anomaly_score": 0.0842,
+    "anomaly_score": 0.1314,
     "confidence": 0.95,
     "label": "normal",
     "scenario_id": "USER-BASELINE",
@@ -352,7 +363,8 @@
       "new_location": false,
       "failed_login_count": 0,
       "encoded_command": false,
-      "data_transfer_mb": 13.29
+      "privileged_action": false,
+      "data_transfer_mb": 6.7
     },
     "tags": [
       "synthetic",
@@ -361,7 +373,7 @@
   },
   {
     "event_id": "EVT-ATTACK-000263",
-    "timestamp": "2026-07-17T14:45:19.709607+00:00",
+    "timestamp": "2026-07-17T14:57:54.325188+00:00",
     "source_type": "email",
     "event_type": "phishing_email_detected",
     "severity": "medium",
@@ -391,7 +403,7 @@
   },
   {
     "event_id": "EVT-ATTACK-000264",
-    "timestamp": "2026-07-17T14:53:19.709607+00:00",
+    "timestamp": "2026-07-17T15:05:54.325188+00:00",
     "source_type": "authentication",
     "event_type": "login_success",
     "severity": "medium",
@@ -423,7 +435,7 @@
   },
   {
     "event_id": "EVT-ATTACK-000265",
-    "timestamp": "2026-07-17T14:59:19.709607+00:00",
+    "timestamp": "2026-07-17T15:11:54.325188+00:00",
     "source_type": "endpoint",
     "event_type": "process_execution",
     "severity": "high",
@@ -453,7 +465,7 @@
   },
   {
     "event_id": "EVT-ATTACK-000266",
-    "timestamp": "2026-07-17T15:07:19.709607+00:00",
+    "timestamp": "2026-07-17T15:19:54.325188+00:00",
     "source_type": "endpoint",
     "event_type": "credential_dumping",
     "severity": "critical",
@@ -482,7 +494,7 @@
   },
   {
     "event_id": "EVT-ATTACK-000267",
-    "timestamp": "2026-07-17T15:16:19.709607+00:00",
+    "timestamp": "2026-07-17T15:28:54.325188+00:00",
     "source_type": "network",
     "event_type": "network_service_discovery",
     "severity": "high",
@@ -511,7 +523,7 @@
   },
   {
     "event_id": "EVT-ATTACK-000268",
-    "timestamp": "2026-07-17T15:28:19.709607+00:00",
+    "timestamp": "2026-07-17T15:40:54.325188+00:00",
     "source_type": "network",
     "event_type": "remote_service_connection",
     "severity": "critical",
@@ -540,7 +552,7 @@
   },
   {
     "event_id": "EVT-ATTACK-000269",
-    "timestamp": "2026-07-17T15:41:19.709607+00:00",
+    "timestamp": "2026-07-17T15:53:54.325188+00:00",
     "source_type": "endpoint",
     "event_type": "sensitive_database_access",
     "severity": "critical",
@@ -569,7 +581,7 @@
   },
   {
     "event_id": "EVT-ATTACK-000270",
-    "timestamp": "2026-07-17T15:53:19.709607+00:00",
+    "timestamp": "2026-07-17T16:05:54.325188+00:00",
     "source_type": "network",
     "event_type": "unusual_data_transfer",
     "severity": "critical",

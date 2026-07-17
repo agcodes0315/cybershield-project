@@ -8,19 +8,31 @@ from typing import Any
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-DATASET_DIRECTORY = PROJECT_ROOT / "event-simulator" / "datasets"
+DATASET_DIR = PROJECT_ROOT / "event-simulator" / "datasets"
 
 
 class SecurityEventSimulator:
-    """Generate safe synthetic telemetry for CyberShield CNI."""
+    """Generate safe, synthetic telemetry for CyberShield CNI."""
 
     def __init__(self, random_seed: int = 42) -> None:
         self.random = random.Random(random_seed)
         self.event_counter = 0
 
-    def next_event_id(self, prefix: str) -> str:
+    def _next_event_id(self, prefix: str) -> str:
         self.event_counter += 1
         return f"EVT-{prefix}-{self.event_counter:06d}"
+
+    @staticmethod
+    def _source_for_event(event_type: str) -> str:
+        mapping = {
+            "login_success": "authentication",
+            "logout": "authentication",
+            "application_access": "endpoint",
+            "file_read": "endpoint",
+            "dns_query": "network",
+            "internal_connection": "network",
+        }
+        return mapping.get(event_type, "simulator")
 
     def generate_normal_events(
         self,
@@ -85,13 +97,14 @@ class SecurityEventSimulator:
         for index in range(count):
             user = self.random.choice(users)
             event_type = self.random.choice(event_types)
-            timestamp = base_time + timedelta(minutes=index * 2)
 
             events.append(
                 {
-                    "event_id": self.next_event_id("NORMAL"),
-                    "timestamp": timestamp.isoformat(),
-                    "source_type": self.source_for_event(event_type),
+                    "event_id": self._next_event_id("NORMAL"),
+                    "timestamp": (
+                        base_time + timedelta(minutes=index * 2)
+                    ).isoformat(),
+                    "source_type": self._source_for_event(event_type),
                     "event_type": event_type,
                     "severity": "info",
                     "organisation_id": "ORG-DEMO-001",
@@ -129,26 +142,31 @@ class SecurityEventSimulator:
 
         return events
 
-    def generate_silent_intruder(
+    def generate_user_baseline(
         self,
-        start_time: datetime | None = None,
+        count: int,
+        start_time: datetime,
     ) -> list[dict[str, Any]]:
-        base_time = start_time or datetime.now(timezone.utc)
-
         events: list[dict[str, Any]] = []
 
-        # Twelve normal events establish the compromised user's baseline.
-        for index in range(12):
+        for index in range(count):
+            event_type = self.random.choice(
+                [
+                    "login_success",
+                    "application_access",
+                    "file_read",
+                    "internal_connection",
+                ]
+            )
+
             events.append(
                 {
-                    "event_id": self.next_event_id("BASELINE"),
+                    "event_id": self._next_event_id("BASELINE"),
                     "timestamp": (
-                        base_time
-                        - timedelta(hours=5)
-                        + timedelta(minutes=index * 15)
+                        start_time + timedelta(minutes=index * 15)
                     ).isoformat(),
-                    "source_type": "authentication",
-                    "event_type": "login_success",
+                    "source_type": self._source_for_event(event_type),
+                    "event_type": event_type,
                     "severity": "info",
                     "organisation_id": "ORG-DEMO-001",
                     "user_id": "USR-104",
@@ -170,6 +188,7 @@ class SecurityEventSimulator:
                         "new_location": False,
                         "failed_login_count": 0,
                         "encoded_command": False,
+                        "privileged_action": False,
                         "data_transfer_mb": round(
                             self.random.uniform(1.0, 18.0),
                             2,
@@ -179,7 +198,25 @@ class SecurityEventSimulator:
                 }
             )
 
-        attack_definitions = [
+        return events
+
+    def generate_silent_intruder(
+        self,
+        start_time: datetime | None = None,
+        include_precursor_events: bool = True,
+    ) -> list[dict[str, Any]]:
+        base_time = start_time or datetime.now(timezone.utc)
+        events: list[dict[str, Any]] = []
+
+        if include_precursor_events:
+            events.extend(
+                self.generate_user_baseline(
+                    count=12,
+                    start_time=base_time - timedelta(hours=5),
+                )
+            )
+
+        attack_stages = [
             {
                 "minutes": 0,
                 "stage": 1,
@@ -316,12 +353,13 @@ class SecurityEventSimulator:
             },
         ]
 
-        for definition in attack_definitions:
+        for definition in attack_stages:
             events.append(
                 {
-                    "event_id": self.next_event_id("ATTACK"),
+                    "event_id": self._next_event_id("ATTACK"),
                     "timestamp": (
-                        base_time + timedelta(minutes=definition["minutes"])
+                        base_time
+                        + timedelta(minutes=definition["minutes"])
                     ).isoformat(),
                     "source_type": definition["source_type"],
                     "event_type": definition["event_type"],
@@ -350,19 +388,6 @@ class SecurityEventSimulator:
         return sorted(events, key=lambda event: event["timestamp"])
 
     @staticmethod
-    def source_for_event(event_type: str) -> str:
-        mapping = {
-            "login_success": "authentication",
-            "logout": "authentication",
-            "application_access": "endpoint",
-            "file_read": "endpoint",
-            "dns_query": "network",
-            "internal_connection": "network",
-        }
-
-        return mapping.get(event_type, "simulator")
-
-    @staticmethod
     def save_events(
         events: list[dict[str, Any]],
         output_path: Path,
@@ -386,17 +411,15 @@ def main() -> None:
 
     simulator.save_events(
         normal_events,
-        DATASET_DIRECTORY / "normal_events.json",
+        DATASET_DIR / "normal_events.json",
     )
-
     simulator.save_events(
         scenario_events,
-        DATASET_DIRECTORY / "silent_intruder_events.json",
+        DATASET_DIR / "silent_intruder_events.json",
     )
-
     simulator.save_events(
         combined_events,
-        DATASET_DIRECTORY / "combined_events.json",
+        DATASET_DIR / "combined_events.json",
     )
 
     malicious_count = sum(
@@ -409,7 +432,7 @@ def main() -> None:
     print(f"Scenario events: {len(scenario_events)}")
     print(f"Malicious events: {malicious_count}")
     print(f"Combined events: {len(combined_events)}")
-    print(f"Output directory: {DATASET_DIRECTORY}")
+    print(f"Output directory: {DATASET_DIR}")
 
 
 if __name__ == "__main__":
