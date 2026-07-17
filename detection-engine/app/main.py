@@ -6,21 +6,55 @@ from typing import Any, AsyncIterator
 
 from dotenv import load_dotenv
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.cors import (
+    CORSMiddleware,
+)
 
-from app.api.attack_graph import router as attack_graph_router
-from app.api.breach import router as breach_router
-from app.api.correlation import router as correlation_router
-from app.api.email_analysis import router as email_router
-from app.api.gophish import router as gophish_router
-from app.api.prediction import router as prediction_router
-from app.api.recon import router as recon_router
-from app.api.reports import router as reports_router
-from app.api.scan import router as scan_router
-from app.api.threats import router as threats_router
-from app.api.ueba import router as ueba_router
-from app.api.vuln_scan import router as vuln_router
-from app.api.yara_scan import router as yara_router
+from app.api.attack_graph import (
+    router as attack_graph_router,
+)
+from app.api.breach import (
+    router as breach_router,
+)
+from app.api.correlation import (
+    router as correlation_router,
+)
+from app.api.email_analysis import (
+    router as email_router,
+)
+from app.api.gophish import (
+    router as gophish_router,
+)
+from app.api.pipeline import (
+    router as pipeline_router,
+)
+from app.api.prediction import (
+    router as prediction_router,
+)
+from app.api.recon import (
+    router as recon_router,
+)
+from app.api.reports import (
+    router as reports_router,
+)
+from app.api.response import (
+    router as response_router,
+)
+from app.api.scan import (
+    router as scan_router,
+)
+from app.api.threats import (
+    router as threats_router,
+)
+from app.api.ueba import (
+    router as ueba_router,
+)
+from app.api.vuln_scan import (
+    router as vuln_router,
+)
+from app.api.yara_scan import (
+    router as yara_router,
+)
 
 
 load_dotenv()
@@ -29,7 +63,10 @@ load_dotenv()
 def get_allowed_origins() -> list[str]:
     configured_origins = os.getenv(
         "CORS_ORIGINS",
-        "http://localhost:5173,http://127.0.0.1:5173",
+        (
+            "http://localhost:5173,"
+            "http://127.0.0.1:5173"
+        ),
     )
 
     return [
@@ -46,7 +83,7 @@ async def lifespan(
     app.state.service_name = (
         "cybershield-detection-engine"
     )
-    app.state.service_version = "3.0.0"
+    app.state.service_version = "4.0.0"
     app.state.environment = os.getenv(
         "APP_ENV",
         "development",
@@ -58,13 +95,12 @@ async def lifespan(
 app = FastAPI(
     title="CyberShield CNI Detection Engine",
     description=(
-        "AI-driven cyber-resilience platform for critical national "
-        "infrastructure. Provides behavioural anomaly detection, "
-        "MITRE ATT&CK correlation, predictive attack intelligence, "
-        "attack-path analysis, blast-radius simulation, remediation "
-        "prioritisation, and security-scanning services."
+        "AI-driven cyber-resilience platform for critical "
+        "national infrastructure with UEBA, MITRE ATT&CK "
+        "correlation, attack prediction, graph intelligence, "
+        "human-gated SOAR response, and tamper-evident audit."
     ),
-    version="3.0.0",
+    version="4.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
     openapi_url="/openapi.json",
@@ -97,37 +133,29 @@ app.add_middleware(
 @app.get(
     "/",
     tags=["System"],
-    summary="Detection engine information",
 )
 def root() -> dict[str, Any]:
     return {
-        "service": "CyberShield CNI Detection Engine",
-        "version": "3.0.0",
-        "status": "running",
-        "environment": os.getenv(
-            "APP_ENV",
-            "development",
+        "service": (
+            "CyberShield CNI Detection Engine"
         ),
+        "version": "4.0.0",
+        "status": "running",
         "documentation": "/docs",
+        "simulation_only_response": True,
         "capabilities": [
-            "URL threat detection",
-            "Email-header analysis",
-            "Threat-intelligence aggregation",
-            "Network reconnaissance",
-            "YARA scanning",
-            "Breach intelligence",
-            "Vulnerability scanning",
-            "UEBA behavioural anomaly detection",
-            "MITRE ATT&CK technique mapping",
-            "Weak-signal incident correlation",
-            "Viterbi next-stage attack prediction",
-            "Architecture-aware target prediction",
-            "Adjacency-list infrastructure modelling",
-            "BFS minimum-hop attack paths",
-            "Dijkstra lowest-resistance paths",
-            "DFS blast-radius analysis",
-            "Containment-impact simulation",
-            "Priority-queue remediation ranking",
+            "UEBA anomaly detection",
+            "MITRE ATT&CK mapping",
+            "weak-signal correlation",
+            "Viterbi attack prediction",
+            "attack-path modelling",
+            "blast-radius calculation",
+            "remediation prioritisation",
+            "human-gated SOAR response",
+            "single and dual approvals",
+            "safe response simulation",
+            "SHA-256 chained audit ledger",
+            "end-to-end resilience pipeline",
         ],
     }
 
@@ -135,40 +163,35 @@ def root() -> dict[str, Any]:
 @app.get(
     "/health",
     tags=["System"],
-    summary="Service health check",
 )
 def health() -> dict[str, Any]:
     return {
         "status": "healthy",
         "service": "detection-engine",
-        "version": "3.0.0",
-        "environment": os.getenv(
-            "APP_ENV",
-            "development",
-        ),
+        "version": "4.0.0",
     }
 
 
 @app.get(
     "/ready",
     tags=["System"],
-    summary="Service readiness check",
 )
 def readiness() -> dict[str, Any]:
     return {
         "status": "ready",
-        "service": "detection-engine",
         "checks": {
             "api": True,
-            "ueba_module": True,
-            "mitre_module": True,
-            "correlation_module": True,
-            "attack_graph_module": True,
-            "pathfinder_module": True,
-            "blast_radius_module": True,
-            "remediation_module": True,
-            "prediction_module": True,
-            "viterbi_module": True,
+            "ueba": True,
+            "mitre": True,
+            "correlation": True,
+            "prediction": True,
+            "attack_graph": True,
+            "remediation": True,
+            "response_playbooks": True,
+            "approval_engine": True,
+            "safe_executor": True,
+            "audit_ledger": True,
+            "resilience_pipeline": True,
         },
     }
 
@@ -218,8 +241,9 @@ app.include_router(
     prefix="/api/vuln",
 )
 
-# These routers define their own complete API prefixes.
 app.include_router(ueba_router)
 app.include_router(correlation_router)
 app.include_router(attack_graph_router)
 app.include_router(prediction_router)
+app.include_router(response_router)
+app.include_router(pipeline_router)

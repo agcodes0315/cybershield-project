@@ -3,9 +3,21 @@ from __future__ import annotations
 from threading import RLock
 from uuid import uuid4
 
-from .approval import ApprovalEngine
+from .approval import (
+    ApprovalEngine,
+    approval_engine,
+)
+from .audit import (
+    AuditActorType,
+    AuditEventType,
+    TamperEvidentAuditLedger,
+    audit_ledger,
+)
 from .executor import SafeResponseExecutor
-from .playbooks import PlaybookRegistry
+from .playbooks import (
+    PlaybookRegistry,
+    playbook_registry,
+)
 from .schemas import (
     ApprovalDecision,
     ApprovalStatus,
@@ -18,16 +30,30 @@ from .schemas import (
 
 class ResponseOrchestrationService:
     """
-    Coordinates playbook creation, approvals and safe execution.
+    Coordinates playbook creation, approvals, safe execution,
+    and tamper-evident audit logging.
+
+    A private audit ledger is created automatically when no ledger
+    is supplied. This keeps isolated service instances and unit
+    tests independent while allowing the production singleton to
+    use the shared application audit ledger.
     """
 
     def __init__(
         self,
         registry: PlaybookRegistry,
         approval_engine: ApprovalEngine,
+        audit_ledger: TamperEvidentAuditLedger | None = None,
     ) -> None:
         self.registry = registry
         self.approval_engine = approval_engine
+
+        self.audit_ledger = (
+            audit_ledger
+            if audit_ledger is not None
+            else TamperEvidentAuditLedger()
+        )
+
         self.executor = SafeResponseExecutor(
             approval_engine
         )
@@ -50,7 +76,8 @@ class ResponseOrchestrationService:
 
             if not playbook.enabled:
                 raise ValueError(
-                    f"Playbook is disabled: {playbook.playbook_id}"
+                    "Playbook is disabled: "
+                    f"{playbook.playbook_id}"
                 )
 
             execution_id = (
@@ -138,14 +165,32 @@ class ResponseOrchestrationService:
 
             registered = (
                 self.approval_engine
-                .register_execution(
-                    execution
-                )
+                .register_execution(execution)
             )
 
             self._executions[
                 execution_id
             ] = registered
+
+            self.audit_ledger.append(
+                event_type=(
+                    AuditEventType.EXECUTION_CREATED
+                ),
+                execution_id=execution_id,
+                incident_id=request.incident_id,
+                actor_id=request.requested_by,
+                actor_type=AuditActorType.USER,
+                payload={
+                    "playbook_id": (
+                        request.playbook_id
+                    ),
+                    "target_ids": target_ids,
+                    "dry_run": True,
+                    "status": (
+                        registered.status.value
+                    ),
+                },
+            )
 
             return registered.model_copy(
                 deep=True
@@ -160,8 +205,9 @@ class ResponseOrchestrationService:
                 decision.execution_id
             )
 
-            self.approval_engine.submit_decision(
-                decision
+            state = (
+                self.approval_engine
+                .submit_decision(decision)
             )
 
             updated = (
@@ -174,6 +220,38 @@ class ResponseOrchestrationService:
             self._executions[
                 updated.execution_id
             ] = updated
+
+            event_type = (
+                AuditEventType.APPROVAL_GRANTED
+                if decision.approved
+                else AuditEventType.APPROVAL_REJECTED
+            )
+
+            self.audit_ledger.append(
+                event_type=event_type,
+                execution_id=decision.execution_id,
+                incident_id=execution.incident_id,
+                execution_step_id=(
+                    decision.execution_step_id
+                ),
+                actor_id=decision.approver_id,
+                actor_type=AuditActorType.USER,
+                payload={
+                    "approved": decision.approved,
+                    "reason": decision.reason,
+                    "approval_status": (
+                        state.status.value
+                    ),
+                    "approval_count": (
+                        state.approval_count
+                    ),
+                    "remaining_approval_count": (
+                        state
+                        .remaining_approval_count
+                    ),
+                },
+                timestamp=decision.decided_at,
+            )
 
             return updated.model_copy(
                 deep=True
@@ -188,9 +266,128 @@ class ResponseOrchestrationService:
                 execution_id
             )
 
+            self.audit_ledger.append(
+                event_type=(
+                    AuditEventType.EXECUTION_STARTED
+                ),
+                execution_id=execution_id,
+                incident_id=execution.incident_id,
+                actor_id=(
+                    "response-orchestration-service"
+                ),
+                actor_type=AuditActorType.SERVICE,
+                payload={
+                    "status_before": (
+                        execution.status.value
+                    ),
+                    "dry_run": execution.dry_run,
+                },
+            )
+
+            previous_steps = {
+                step.execution_step_id: step
+                for step in execution.steps
+            }
+
             updated = self.executor.execute(
                 execution
             )
+
+            for step in updated.steps:
+                previous = previous_steps.get(
+                    step.execution_step_id
+                )
+
+                if (
+                    previous is not None
+                    and previous.status
+                    == step.status
+                    and step.status
+                    != ExecutionStatus.COMPLETED
+                ):
+                    continue
+
+                if (
+                    step.status
+                    == ExecutionStatus.COMPLETED
+                ):
+                    step_event_type = (
+                        AuditEventType.STEP_COMPLETED
+                    )
+                elif (
+                    step.status
+                    == ExecutionStatus.FAILED
+                ):
+                    step_event_type = (
+                        AuditEventType.STEP_FAILED
+                    )
+                else:
+                    continue
+
+                self.audit_ledger.append(
+                    event_type=step_event_type,
+                    execution_id=execution_id,
+                    incident_id=(
+                        updated.incident_id
+                    ),
+                    execution_step_id=(
+                        step.execution_step_id
+                    ),
+                    actor_id=(
+                        "safe-response-executor"
+                    ),
+                    actor_type=(
+                        AuditActorType.SERVICE
+                    ),
+                    payload={
+                        "step_number": (
+                            step.step_number
+                        ),
+                        "action_id": (
+                            step.action_id
+                        ),
+                        "action_type": (
+                            step.action_type.value
+                        ),
+                        "status": (
+                            step.status.value
+                        ),
+                        "target_ids": (
+                            step.target_ids
+                        ),
+                        "result": step.result,
+                        "error_message": (
+                            step.error_message
+                        ),
+                    },
+                )
+
+            final_event_type = self._final_event_type(
+                updated.status
+            )
+
+            if final_event_type is not None:
+                self.audit_ledger.append(
+                    event_type=final_event_type,
+                    execution_id=execution_id,
+                    incident_id=(
+                        updated.incident_id
+                    ),
+                    actor_id=(
+                        "response-orchestration-service"
+                    ),
+                    actor_type=(
+                        AuditActorType.SERVICE
+                    ),
+                    payload={
+                        "status": (
+                            updated.status.value
+                        ),
+                        "summary": (
+                            updated.summary
+                        ),
+                    },
+                )
 
             self._executions[
                 execution_id
@@ -249,19 +446,46 @@ class ResponseOrchestrationService:
                 )
             ]
 
-    def reset(self) -> None:
+    def reset(
+        self,
+        clear_audit: bool = True,
+    ) -> None:
         with self._lock:
             self._executions.clear()
             self.approval_engine.clear()
 
+            if clear_audit:
+                self.audit_ledger.clear()
 
-from .approval import approval_engine
-from .playbooks import playbook_registry
+    @staticmethod
+    def _final_event_type(
+        status: ExecutionStatus,
+    ) -> AuditEventType | None:
+        mapping = {
+            ExecutionStatus.COMPLETED: (
+                AuditEventType
+                .EXECUTION_COMPLETED
+            ),
+            ExecutionStatus.FAILED: (
+                AuditEventType.EXECUTION_FAILED
+            ),
+            ExecutionStatus.REJECTED: (
+                AuditEventType
+                .EXECUTION_REJECTED
+            ),
+            ExecutionStatus.CANCELLED: (
+                AuditEventType
+                .EXECUTION_CANCELLED
+            ),
+        }
+
+        return mapping.get(status)
 
 
 response_orchestration_service = (
     ResponseOrchestrationService(
         registry=playbook_registry,
         approval_engine=approval_engine,
+        audit_ledger=audit_ledger,
     )
 )
