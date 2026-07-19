@@ -1,192 +1,329 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { yaraScan } from '../services/api';
 
+const STAGES = [
+  'Validating target',
+  'Fetching page safely',
+  'Compiling YARA rules',
+  'Scanning content',
+  'Calculating confidence',
+  'Finalising report',
+];
+
+const toneMap = {
+  success: { background: 'rgba(34,197,94,0.12)', color: '#4ade80', border: '1px solid rgba(34,197,94,0.18)' },
+  danger: { background: 'rgba(248,113,113,0.12)', color: '#f87171', border: '1px solid rgba(248,113,113,0.18)' },
+  warning: { background: 'rgba(251,146,60,0.12)', color: '#fb923c', border: '1px solid rgba(251,146,60,0.18)' },
+  info: { background: 'rgba(56,189,248,0.12)', color: '#38bdf8', border: '1px solid rgba(56,189,248,0.18)' },
+  critical: { background: 'rgba(168,85,247,0.12)', color: '#c084fc', border: '1px solid rgba(168,85,247,0.18)' },
+  neutral: { background: 'rgba(148,163,184,0.10)', color: 'var(--text-2)', border: '1px solid rgba(148,163,184,0.12)' },
+};
+
 function Badge({ label, tone = 'neutral' }) {
-  const map = {
-    success: { bg: 'rgba(34,197,94,0.12)', color: '#4ade80', border: '1px solid rgba(34,197,94,0.18)' },
-    danger: { bg: 'rgba(248,113,113,0.12)', color: '#f87171', border: '1px solid rgba(248,113,113,0.18)' },
-    warning: { bg: 'rgba(251,146,60,0.12)', color: '#fb923c', border: '1px solid rgba(251,146,60,0.18)' },
-    info: { bg: 'rgba(56,189,248,0.12)', color: '#38bdf8', border: '1px solid rgba(56,189,248,0.18)' },
-    critical: { bg: 'rgba(168,85,247,0.12)', color: '#a855f7', border: '1px solid rgba(168,85,247,0.18)' },
-    neutral: { bg: 'rgba(148,163,184,0.10)', color: 'var(--text-2)', border: '1px solid rgba(148,163,184,0.12)' },
-  };
-  const t = map[tone] || map.neutral;
-  return <span style={{ display: 'inline-flex', alignItems: 'center', padding: '5px 12px', borderRadius: '999px', fontSize: '0.74rem', fontWeight: 700, background: t.bg, color: t.color, border: t.border }}>{label}</span>;
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', padding: '5px 12px', borderRadius: 999, fontSize: '0.72rem', fontWeight: 750, whiteSpace: 'nowrap', ...(toneMap[tone] || toneMap.neutral) }}>
+      {label}
+    </span>
+  );
 }
 
-function sevTone(s) {
-  return s === 'critical' ? 'critical' : s === 'high' ? 'danger' : s === 'medium' ? 'warning' : 'info';
+function severityTone(value) {
+  const severity = String(value || '').toLowerCase();
+  if (severity === 'critical') return 'critical';
+  if (severity === 'high') return 'danger';
+  if (severity === 'medium') return 'warning';
+  if (severity === 'low') return 'info';
+  return 'neutral';
+}
+
+function riskTone(score) {
+  const value = Number(score || 0);
+  if (value >= 70) return 'critical';
+  if (value >= 45) return 'danger';
+  if (value >= 20) return 'warning';
+  if (value > 0) return 'info';
+  return 'success';
+}
+
+function getError(error) {
+  return error?.response?.data?.detail || error?.response?.data?.error || error?.response?.data?.message || error?.message || 'The request could not be completed.';
+}
+
+function ProgressPanel({ stageIndex }) {
+  const progress = Math.round(((stageIndex + 1) / STAGES.length) * 100);
+  return (
+    <section style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 18, padding: 24 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, marginBottom: 12 }}>
+        <div>
+          <div style={{ color: 'var(--text-1)', fontWeight: 850 }}>Running YARA assessment</div>
+          <div style={{ color: 'var(--text-3)', fontSize: '0.8rem', marginTop: 4 }}>{STAGES[stageIndex]}</div>
+        </div>
+        <strong style={{ color: '#c084fc' }}>{progress}%</strong>
+      </div>
+      <div style={{ height: 9, borderRadius: 999, background: 'rgba(148,163,184,0.12)', overflow: 'hidden' }}>
+        <div style={{ width: `${progress}%`, height: '100%', borderRadius: 999, background: 'linear-gradient(90deg, #a855f7, #6366f1)', transition: 'width 350ms ease' }} />
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 8, marginTop: 18 }}>
+        {STAGES.map((stage, index) => (
+          <div key={stage} style={{ padding: 10, borderRadius: 10, background: index <= stageIndex ? 'rgba(168,85,247,0.09)' : 'var(--bg-surface)', border: index <= stageIndex ? '1px solid rgba(168,85,247,0.18)' : '1px solid var(--border)', color: index <= stageIndex ? '#c084fc' : 'var(--text-3)', fontSize: '0.76rem', fontWeight: 700 }}>
+            {index < stageIndex ? '✓ ' : index === stageIndex ? '● ' : '○ '}{stage}
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function SeverityChart({ matches }) {
+  const counts = useMemo(() => {
+    const next = { critical: 0, high: 0, medium: 0, low: 0, informational: 0 };
+    matches.forEach((match) => {
+      const key = String(match.severity || 'informational').toLowerCase();
+      if (Object.hasOwn(next, key)) next[key] += 1;
+    });
+    return next;
+  }, [matches]);
+
+  const rows = [
+    ['Critical', counts.critical, '#c084fc'],
+    ['High', counts.high, '#f87171'],
+    ['Medium', counts.medium, '#fb923c'],
+    ['Low', counts.low, '#38bdf8'],
+    ['Informational', counts.informational, '#94a3b8'],
+  ];
+  const max = Math.max(1, ...Object.values(counts));
+
+  return (
+    <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 18 }}>
+      <div style={{ color: 'var(--text-1)', fontWeight: 800, marginBottom: 14 }}>Severity distribution</div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
+        {rows.map(([label, value, color]) => (
+          <div key={label} style={{ display: 'grid', gridTemplateColumns: '100px 1fr 30px', gap: 10, alignItems: 'center' }}>
+            <span style={{ color: 'var(--text-3)', fontSize: '0.76rem' }}>{label}</span>
+            <div style={{ height: 9, borderRadius: 999, background: 'rgba(148,163,184,0.12)', overflow: 'hidden' }}>
+              <div style={{ width: `${(value / max) * 100}%`, minWidth: value ? 8 : 0, height: '100%', borderRadius: 999, background: color }} />
+            </div>
+            <strong style={{ color, textAlign: 'right' }}>{value}</strong>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 export default function YaraScan() {
   const [url, setUrl] = useState('');
   const [result, setResult] = useState(null);
   const [rules, setRules] = useState(null);
-  const [scanning, setScanning] = useState(false);
   const [tab, setTab] = useState('scan');
+  const [scanning, setScanning] = useState(false);
+  const [stageIndex, setStageIndex] = useState(0);
+  const [error, setError] = useState('');
+  const [ruleSearch, setRuleSearch] = useState('');
+  const [severityFilter, setSeverityFilter] = useState('all');
+
+  const card = { background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 18, padding: 24 };
+  const soft = { background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 16 };
+
+  const filteredRules = useMemo(() => {
+    const query = ruleSearch.trim().toLowerCase();
+    return (rules?.rules || []).filter((rule) => {
+      const searchOk = !query || [rule.name, rule.description, rule.category, rule.mitre_attack].some((value) => String(value || '').toLowerCase().includes(query));
+      const severityOk = severityFilter === 'all' || rule.severity === severityFilter;
+      return searchOk && severityOk;
+    });
+  }, [rules, ruleSearch, severityFilter]);
 
   const doScan = async () => {
-    if (!url.trim()) return;
-    setScanning(true); setResult(null);
+    if (!url.trim() || scanning) return;
+    setScanning(true);
+    setResult(null);
+    setError('');
+    setStageIndex(0);
+    const timer = window.setInterval(() => setStageIndex((value) => Math.min(value + 1, STAGES.length - 1)), 700);
     try {
-      const r = await yaraScan.scan(url.trim());
-      setResult(r.data);
-    } catch { setResult({ error: 'Scan failed' }); }
-    setScanning(false);
+      const response = await yaraScan.scan(url.trim());
+      if (response.data?.error) throw new Error(response.data.error);
+      setResult(response.data);
+    } catch (requestError) {
+      setError(getError(requestError));
+    } finally {
+      window.clearInterval(timer);
+      setScanning(false);
+    }
   };
 
   const loadRules = async () => {
-    try { const r = await yaraScan.getRules(); setRules(r.data); } catch {}
+    setError('');
+    try {
+      const response = await yaraScan.getRules();
+      setRules(response.data);
+    } catch (requestError) {
+      setError(getError(requestError));
+    }
   };
 
-  const card = { background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px', padding: '24px' };
-  const soft = { background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: '12px', padding: '16px' };
+  const switchTab = (nextTab) => {
+    setTab(nextTab);
+    setError('');
+    if (nextTab === 'rules' && !rules) loadRules();
+  };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      <div>
-        <h2 style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-1)' }}>YARA Rule Scanner</h2>
-        <p style={{ fontSize: '0.9rem', color: 'var(--text-3)', marginTop: '4px' }}>
-          Scan web pages against custom YARA rules to detect phishing kits, credential harvesting, brand impersonation, and obfuscated redirects.
-        </p>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+      <header>
+        <div style={{ color: '#38bdf8', fontSize: '0.72rem', fontWeight: 900, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 8 }}>Web content intelligence</div>
+        <h2 style={{ margin: 0, fontSize: '1.7rem', fontWeight: 900, color: 'var(--text-1)' }}>YARA Web Intelligence Scanner</h2>
+        <p style={{ fontSize: '0.9rem', color: 'var(--text-3)', margin: '7px 0 0', lineHeight: 1.55 }}>Evaluate authorised web content against phishing, credential-harvesting and obfuscation rules with confidence-aware scoring.</p>
+      </header>
+
+      <div style={{ padding: 15, borderRadius: 13, background: 'rgba(251,146,60,0.08)', border: '1px solid rgba(251,146,60,0.20)', color: 'var(--text-2)', fontSize: '0.8rem', lineHeight: 1.5 }}>
+        <strong style={{ color: '#fb923c' }}>Authorised testing only. </strong>Private and local network targets are blocked. A YARA match is an indicator and still requires analyst review.
       </div>
 
-      <div style={{ display: 'flex', gap: '6px' }}>
-        {['scan', 'rules'].map(t => (
-          <button key={t} onClick={() => { setTab(t); if (t === 'rules' && !rules) loadRules(); }} style={{
-            padding: '9px 22px', borderRadius: '10px', border: 'none', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600, fontFamily: 'inherit',
-            background: tab === t ? 'rgba(168,85,247,0.12)' : 'transparent', color: tab === t ? '#a855f7' : 'var(--text-3)',
-            border: tab === t ? '1px solid rgba(168,85,247,0.15)' : '1px solid transparent',
-          }}>{t.charAt(0).toUpperCase() + t.slice(1)}</button>
+      <nav style={{ display: 'flex', gap: 8 }}>
+        {[['scan', 'Scan'], ['rules', 'Rules']].map(([value, label]) => (
+          <button key={value} type="button" onClick={() => switchTab(value)} style={{ padding: '10px 22px', borderRadius: 10, cursor: 'pointer', fontSize: '0.85rem', fontWeight: 700, fontFamily: 'inherit', background: tab === value ? 'rgba(168,85,247,0.12)' : 'transparent', color: tab === value ? '#c084fc' : 'var(--text-3)', border: tab === value ? '1px solid rgba(168,85,247,0.18)' : '1px solid transparent' }}>{label}</button>
         ))}
-      </div>
+      </nav>
+
+      {error && <div role="alert" style={{ padding: '14px 18px', borderRadius: 12, background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.18)', color: '#f87171', fontWeight: 650 }}>{error}</div>}
 
       {tab === 'scan' && (
         <>
-          <div style={card}>
-            <div style={{ display: 'flex', gap: '14px' }}>
-              <input value={url} onChange={e => setUrl(e.target.value)} onKeyDown={e => e.key === 'Enter' && doScan()}
-                placeholder="Enter URL to scan with YARA rules (e.g. http://suspicious-site.com)"
-                style={{ flex: 1, padding: '14px 16px', borderRadius: '12px', background: 'var(--bg-input)', border: '1px solid var(--border)', color: 'var(--text-1)', fontSize: '0.9rem', outline: 'none', fontFamily: 'inherit' }}
-              />
-              <button onClick={doScan} disabled={scanning} style={{
-                padding: '14px 28px', borderRadius: '12px', border: 'none',
-                background: 'linear-gradient(135deg, #a855f7, #6366f1)',
-                color: 'white', fontSize: '0.88rem', fontWeight: 700, cursor: 'pointer',
-                fontFamily: 'inherit', opacity: scanning ? 0.6 : 1, boxShadow: '0 4px 16px rgba(168,85,247,0.22)',
-              }}>{scanning ? 'Scanning...' : '🔬 YARA Scan'}</button>
+          <section style={card}>
+            <label htmlFor="yara-target" style={{ display: 'block', color: 'var(--text-2)', fontSize: '0.78rem', fontWeight: 800, marginBottom: 9 }}>Public URL</label>
+            <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
+              <input id="yara-target" value={url} onChange={(event) => setUrl(event.target.value)} onKeyDown={(event) => event.key === 'Enter' && doScan()} placeholder="https://example.com" disabled={scanning} style={{ flex: '1 1 420px', minWidth: 0, padding: '14px 16px', borderRadius: 12, background: 'var(--bg-input)', border: '1px solid var(--border)', color: 'var(--text-1)', fontSize: '0.9rem', outline: 'none', fontFamily: 'inherit' }} />
+              <button type="button" onClick={doScan} disabled={scanning} style={{ padding: '14px 28px', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg, #a855f7, #6366f1)', color: 'white', fontWeight: 800, cursor: scanning ? 'not-allowed' : 'pointer', opacity: scanning ? 0.6 : 1 }}>{scanning ? 'Scanning...' : 'Run YARA Assessment'}</button>
             </div>
-          </div>
+            <p style={{ margin: '10px 0 0', color: 'var(--text-3)', fontSize: '0.75rem' }}>Safe test target: https://example.com</p>
+          </section>
 
-          {result && !result.error && (
+          {scanning && <ProgressPanel stageIndex={stageIndex} />}
+
+          {result && !scanning && (
             <>
-              <div style={{
-                ...card,
-                border: result.risk_score >= 50 ? '1px solid rgba(248,113,113,0.20)' : result.risk_score >= 25 ? '1px solid rgba(251,146,60,0.20)' : '1px solid rgba(34,197,94,0.18)',
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <section style={card}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'flex-start', marginBottom: 18 }}>
                   <div>
-                    <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-1)', margin: '0 0 4px' }}>Scan Results</h3>
-                    <p style={{ fontSize: '0.82rem', color: 'var(--text-3)', margin: 0, fontFamily: 'JetBrains Mono, monospace' }}>{result.url}</p>
+                    <h3 style={{ margin: '0 0 5px', color: 'var(--text-1)' }}>Scan results</h3>
+                    <p style={{ margin: 0, color: 'var(--text-3)', fontFamily: 'JetBrains Mono, monospace', fontSize: '0.78rem', overflowWrap: 'anywhere' }}>{result.final_url || result.url}</p>
                   </div>
-                  <Badge label={`${result.risk_level} — Score ${result.risk_score}`} tone={result.risk_score >= 50 ? 'danger' : result.risk_score >= 25 ? 'warning' : 'success'} />
+                  <Badge label={`${result.risk_level} — Score ${result.risk_score}`} tone={riskTone(result.risk_score)} />
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px', marginBottom: '18px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 18 }}>
                   {[
-                    { l: 'Rules matched', v: result.total_matches, c: result.total_matches > 0 ? '#f87171' : '#4ade80' },
-                    { l: 'Rules loaded', v: result.rules_loaded, c: '#38bdf8' },
-                    { l: 'Status code', v: result.status_code || 'N/A', c: 'var(--text-1)' },
-                    { l: 'Risk score', v: `${result.risk_score}%`, c: result.risk_score >= 50 ? '#f87171' : result.risk_score >= 25 ? '#fb923c' : '#4ade80' },
-                  ].map((s, i) => (
-                    <div key={i} style={soft}>
-                      <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>{s.l}</div>
-                      <div style={{ fontSize: '1.4rem', fontWeight: 800, color: s.c }}>{s.v}</div>
-                    </div>
+                    ['Rules matched', result.total_matches, result.total_matches ? '#f87171' : '#4ade80'],
+                    ['Rules compiled', `${result.rules_loaded}/${result.rules_defined}`, '#38bdf8'],
+                    ['Status code', result.status_code || 'N/A', 'var(--text-1)'],
+                    ['Risk score', `${result.risk_score}%`, Number(result.risk_score) >= 45 ? '#f87171' : Number(result.risk_score) >= 20 ? '#fb923c' : '#4ade80'],
+                  ].map(([label, value, color]) => (
+                    <article key={label} style={soft}>
+                      <div style={{ color: 'var(--text-3)', fontSize: '0.69rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: 8 }}>{label}</div>
+                      <div style={{ color, fontSize: '1.35rem', fontWeight: 900 }}>{value}</div>
+                    </article>
                   ))}
                 </div>
 
-                {/* Page analysis */}
-                {result.page_analysis && (
-                  <div style={{ marginBottom: '18px' }}>
-                    <div style={{ fontSize: '0.76rem', fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '10px' }}>Page characteristics</div>
-                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                      <Badge label={result.page_analysis.has_forms ? 'Forms detected' : 'No forms'} tone={result.page_analysis.has_forms ? 'warning' : 'success'} />
-                      <Badge label={result.page_analysis.has_password_field ? 'Password field found' : 'No password fields'} tone={result.page_analysis.has_password_field ? 'danger' : 'success'} />
-                      <Badge label={result.page_analysis.has_iframe ? 'iFrame detected' : 'No iFrames'} tone={result.page_analysis.has_iframe ? 'warning' : 'neutral'} />
-                      <Badge label={result.page_analysis.has_obfuscation ? 'Obfuscation detected' : 'No obfuscation'} tone={result.page_analysis.has_obfuscation ? 'danger' : 'success'} />
-                      <Badge label={`${result.page_analysis.external_links_count} external links`} tone="info" />
-                    </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 14 }}>
+                  <div style={soft}>
+                    <div style={{ color: 'var(--text-1)', fontWeight: 800, marginBottom: 8 }}>Executive summary</div>
+                    <p style={{ color: 'var(--text-2)', fontSize: '0.83rem', lineHeight: 1.6, margin: 0 }}>{result.executive_summary?.headline}</p>
+                    <div style={{ marginTop: 12, color: 'var(--text-3)', fontSize: '0.76rem' }}>High-confidence matches: <strong style={{ color: '#c084fc' }}>{result.executive_summary?.high_confidence_matches || 0}</strong></div>
                   </div>
-                )}
+                  <SeverityChart matches={result.matches || []} />
+                </div>
+              </section>
 
-                {/* Matched rules */}
-                {result.matches.length > 0 ? (
-                  <div>
-                    <div style={{ fontSize: '0.76rem', fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '10px' }}>Matched YARA rules</div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                      {result.matches.map((m, i) => (
-                        <div key={i} style={soft}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                            <span style={{ fontWeight: 700, color: 'var(--text-1)', fontSize: '0.9rem' }}>{m.rule_name}</span>
-                            <div style={{ display: 'flex', gap: '6px' }}>
-                              <Badge label={m.severity} tone={sevTone(m.severity)} />
-                              <Badge label={m.category} tone="info" />
-                              <Badge label={`+${m.score_contribution} pts`} tone="warning" />
-                            </div>
+              <section style={card}>
+                <div style={{ color: 'var(--text-3)', fontSize: '0.74rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: 11 }}>Page characteristics</div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <Badge label={result.page_analysis?.has_forms ? 'Forms detected' : 'No forms'} tone={result.page_analysis?.has_forms ? 'warning' : 'success'} />
+                  <Badge label={result.page_analysis?.has_password_field ? 'Password field found' : 'No password fields'} tone={result.page_analysis?.has_password_field ? 'danger' : 'success'} />
+                  <Badge label={result.page_analysis?.has_iframe ? 'iFrame detected' : 'No iFrames'} tone={result.page_analysis?.has_iframe ? 'warning' : 'neutral'} />
+                  <Badge label={result.page_analysis?.has_obfuscation ? 'Obfuscation detected' : 'No obfuscation'} tone={result.page_analysis?.has_obfuscation ? 'danger' : 'success'} />
+                  <Badge label={`${result.page_analysis?.external_links_count || 0} external links`} tone="info" />
+                </div>
+              </section>
+
+              <section style={card}>
+                <div style={{ color: 'var(--text-3)', fontSize: '0.74rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: 12 }}>Matched YARA evidence</div>
+                {result.matches?.length ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    {result.matches.map((match) => (
+                      <article key={match.rule_name} style={soft}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 14, alignItems: 'flex-start', marginBottom: 9 }}>
+                          <div>
+                            <div style={{ color: 'var(--text-1)', fontWeight: 850 }}>{match.rule_name}</div>
+                            <div style={{ color: 'var(--text-3)', fontSize: '0.74rem', marginTop: 4 }}>MITRE ATT&CK: {match.mitre_attack}</div>
                           </div>
-                          <p style={{ fontSize: '0.84rem', color: 'var(--text-2)', margin: '0 0 8px', lineHeight: 1.6 }}>{m.description}</p>
-                          {m.matched_strings?.length > 0 && (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                              {m.matched_strings.map((s, j) => (
-                                <div key={j} style={{ fontSize: '0.78rem', fontFamily: 'JetBrains Mono, monospace', color: 'var(--text-3)', padding: '4px 8px', borderRadius: '6px', background: 'var(--bg-card)' }}>
-                                  {s.identifier}: {s.matched_text}
-                                </div>
-                              ))}
-                            </div>
-                          )}
+                          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                            <Badge label={match.severity} tone={severityTone(match.severity)} />
+                            <Badge label={`${match.confidence}% confidence`} tone={match.confidence >= 70 ? 'danger' : match.confidence >= 55 ? 'warning' : 'neutral'} />
+                            <Badge label={`${match.false_positive_likelihood} false-positive likelihood`} tone="neutral" />
+                            <Badge label={`+${match.score_contribution} pts`} tone="warning" />
+                          </div>
                         </div>
-                      ))}
-                    </div>
+                        <p style={{ color: 'var(--text-2)', fontSize: '0.82rem', lineHeight: 1.55 }}>{match.description}</p>
+                        <div style={{ color: '#38bdf8', fontSize: '0.78rem', marginBottom: 10 }}>Analyst action: {match.recommendation}</div>
+                        {match.matched_strings?.map((item, index) => (
+                          <div key={`${item.identifier}-${index}`} style={{ fontSize: '0.76rem', fontFamily: 'JetBrains Mono, monospace', color: 'var(--text-3)', padding: '6px 8px', borderRadius: 7, background: 'var(--bg-card)', marginTop: 5, overflowWrap: 'anywhere' }}>{item.identifier}: {item.matched_text}</div>
+                        ))}
+                      </article>
+                    ))}
                   </div>
                 ) : (
-                  <div style={{ padding: '36px 20px', textAlign: 'center', color: 'var(--text-3)', borderRadius: '12px', border: '1px dashed rgba(34,197,94,0.16)', background: 'rgba(34,197,94,0.03)' }}>
-                    <div style={{ fontSize: '1rem', fontWeight: 700, color: '#4ade80', marginBottom: '6px' }}>Clean — no YARA rules matched</div>
-                    <div style={{ fontSize: '0.85rem' }}>No phishing patterns, credential harvesting, or obfuscation detected.</div>
-                  </div>
+                  <div style={{ padding: 36, textAlign: 'center', borderRadius: 12, border: '1px dashed rgba(34,197,94,0.16)', color: '#4ade80' }}>No configured YARA rules matched.</div>
                 )}
-              </div>
+              </section>
             </>
-          )}
-
-          {result?.error && (
-            <div style={{ padding: '14px 18px', borderRadius: '12px', background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.18)', color: '#f87171', fontSize: '0.86rem', fontWeight: 600 }}>{result.error}</div>
           )}
         </>
       )}
 
-      {tab === 'rules' && rules && (
-        <div style={{ ...card, overflow: 'hidden', padding: 0 }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
-            <thead>
-              <tr style={{ background: 'var(--bg-surface)' }}>
-                {['Rule name', 'Description', 'Severity', 'Category'].map(h => (
-                  <th key={h} style={{ textAlign: 'left', padding: '14px 20px', fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {rules.rules?.map((r, i) => (
-                <tr key={i} style={{ borderTop: '1px solid var(--border)' }}>
-                  <td style={{ padding: '14px 20px', fontWeight: 600, color: 'var(--text-1)', fontFamily: 'JetBrains Mono, monospace', fontSize: '0.8rem' }}>{r.name}</td>
-                  <td style={{ padding: '14px 20px', color: 'var(--text-2)' }}>{r.description}</td>
-                  <td style={{ padding: '14px 20px' }}><Badge label={r.severity} tone={sevTone(r.severity)} /></td>
-                  <td style={{ padding: '14px 20px' }}><Badge label={r.category} tone="info" /></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+      {tab === 'rules' && (
+        <>
+          <section style={{ ...card, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            <input value={ruleSearch} onChange={(event) => setRuleSearch(event.target.value)} placeholder="Search rules, categories or MITRE IDs" style={{ flex: '1 1 320px', padding: '12px 14px', borderRadius: 11, background: 'var(--bg-input)', border: '1px solid var(--border)', color: 'var(--text-1)' }} />
+            <select value={severityFilter} onChange={(event) => setSeverityFilter(event.target.value)} style={{ padding: '12px 14px', borderRadius: 11, background: 'var(--bg-input)', border: '1px solid var(--border)', color: 'var(--text-1)' }}>
+              <option value="all">All severities</option>
+              <option value="critical">Critical</option>
+              <option value="high">High</option>
+              <option value="medium">Medium</option>
+              <option value="low">Low</option>
+            </select>
+            <button type="button" onClick={loadRules} style={{ padding: '12px 18px', borderRadius: 11, border: 'none', background: 'linear-gradient(135deg, #a855f7, #6366f1)', color: 'white', fontWeight: 800 }}>Refresh rules</button>
+          </section>
+
+          {rules && (
+            <section style={{ ...card, padding: 0, overflow: 'hidden' }}>
+              <div style={{ padding: 18, borderBottom: '1px solid var(--border)', color: 'var(--text-2)' }}>{rules.compiled}/{rules.total} rules compiled successfully</div>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', minWidth: 900, borderCollapse: 'collapse', fontSize: '0.83rem' }}>
+                  <thead>
+                    <tr style={{ background: 'var(--bg-surface)' }}>
+                      {['Rule name', 'Description', 'Severity', 'Category', 'MITRE', 'Status'].map((heading) => <th key={heading} style={{ textAlign: 'left', padding: '14px 18px', color: 'var(--text-3)', fontSize: '0.68rem', textTransform: 'uppercase' }}>{heading}</th>)}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredRules.map((rule) => (
+                      <tr key={rule.name} style={{ borderTop: '1px solid var(--border)' }}>
+                        <td style={{ padding: '14px 18px', color: 'var(--text-1)', fontFamily: 'JetBrains Mono, monospace', fontWeight: 700 }}>{rule.name}</td>
+                        <td style={{ padding: '14px 18px', color: 'var(--text-2)' }}>{rule.description}</td>
+                        <td style={{ padding: '14px 18px' }}><Badge label={rule.severity} tone={severityTone(rule.severity)} /></td>
+                        <td style={{ padding: '14px 18px' }}><Badge label={rule.category} tone="info" /></td>
+                        <td style={{ padding: '14px 18px', color: 'var(--text-2)' }}>{rule.mitre_attack}</td>
+                        <td style={{ padding: '14px 18px' }}><Badge label={rule.compiled ? 'Compiled' : 'Failed'} tone={rule.compiled ? 'success' : 'danger'} /></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          )}
+        </>
       )}
     </div>
   );
