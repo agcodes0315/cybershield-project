@@ -1,0 +1,612 @@
+[
+  {
+    "event_id": "EVT-BASELINE-000251",
+    "timestamp": "2026-07-17T09:57:54.325188+00:00",
+    "source_type": "endpoint",
+    "event_type": "application_access",
+    "severity": "info",
+    "organisation_id": "ORG-DEMO-001",
+    "user_id": "USR-104",
+    "username": "anita.sharma",
+    "device_id": "DEV-018",
+    "department": "Examinations",
+    "source_ip": "10.0.1.18",
+    "asset_id": "EXAM-APP-01",
+    "anomaly_score": 0.0966,
+    "confidence": 0.95,
+    "label": "normal",
+    "scenario_id": "USER-BASELINE",
+    "attributes": {
+      "login_hour": 10,
+      "new_device": false,
+      "new_location": false,
+      "failed_login_count": 0,
+      "encoded_command": false,
+      "privileged_action": false,
+      "data_transfer_mb": 1.89
+    },
+    "tags": [
+      "synthetic",
+      "baseline"
+    ]
+  },
+  {
+    "event_id": "EVT-BASELINE-000252",
+    "timestamp": "2026-07-17T10:12:54.325188+00:00",
+    "source_type": "network",
+    "event_type": "internal_connection",
+    "severity": "info",
+    "organisation_id": "ORG-DEMO-001",
+    "user_id": "USR-104",
+    "username": "anita.sharma",
+    "device_id": "DEV-018",
+    "department": "Examinations",
+    "source_ip": "10.0.1.18",
+    "asset_id": "EXAM-APP-01",
+    "anomaly_score": 0.0596,
+    "confidence": 0.95,
+    "label": "normal",
+    "scenario_id": "USER-BASELINE",
+    "attributes": {
+      "login_hour": 11,
+      "new_device": false,
+      "new_location": false,
+      "failed_login_count": 0,
+      "encoded_command": false,
+      "privileged_action": false,
+      "data_transfer_mb": 9.03
+    },
+    "tags": [
+      "synthetic",
+      "baseline"
+    ]
+  },
+  {
+    "event_id": "EVT-BASELINE-000253",
+    "timestamp": "2026-07-17T10:27:54.325188+00:00",
+    "source_type": "endpoint",
+    "event_type": "application_access",
+    "severity": "info",
+    "organisation_id": "ORG-DEMO-001",
+    "user_id": "USR-104",
+    "username": "anita.sharma",
+    "device_id": "DEV-018",
+    "department": "Examinations",
+    "source_ip": "10.0.1.18",
+    "asset_id": "EXAM-APP-01",
+    "anomaly_score": 0.0206,
+    "confidence": 0.95,
+    "label": "normal",
+    "scenario_id": "USER-BASELINE",
+    "attributes": {
+      "login_hour": 12,
+      "new_device": false,
+      "new_location": false,
+      "failed_login_count": 0,
+      "encoded_command": false,
+      "privileged_action": false,
+      "data_transfer_mb": 10.36
+    },
+    "tags": [
+      "synthetic",
+      "baseline"
+    ]
+  },
+  {
+    "event_id": "EVT-BASELINE-000254",
+    "timestamp": "2026-07-17T10:42:54.325188+00:00",
+    "source_type": "endpoint",
+    "event_type": "application_access",
+    "severity": "info",
+    "organisation_id": "ORG-DEMO-001",
+    "user_id": "USR-104",
+    "username": "anita.sharma",
+    "device_id": "DEV-018",
+    "department": "Examinations",
+    "source_ip": "10.0.1.18",
+    "asset_id": "EXAM-APP-01",
+    "anomaly_score": 0.0688,
+    "confidence": 0.95,
+    "label": "normal",
+    "scenario_id": "USER-BASELINE",
+    "attributes": {
+      "login_hour": 13,
+      "new_device": false,
+      "new_location": false,
+      "failed_login_count": 0,
+      "encoded_command": false,
+      "privileged_action": false,
+      "data_transfer_mb": 16.9
+    },
+    "tags": [
+      "synthetic",
+      "baseline"
+    ]
+  },
+  {
+    "event_id": "EVT-BASELINE-000255",
+    "timestamp": "2026-07-17T10:57:54.325188+00:00",
+    "source_type": "network",
+    "event_type": "internal_connection",
+    "severity": "info",
+    "organisation_id": "ORG-DEMO-001",
+    "user_id": "USR-104",
+    "username": "anita.sharma",
+    "device_id": "DEV-018",
+    "department": "Examinations",
+    "source_ip": "10.0.1.18",
+    "asset_id": "EXAM-APP-01",
+    "anomaly_score": 0.0773,
+    "confidence": 0.95,
+    "label": "normal",
+    "scenario_id": "USER-BASELINE",
+    "attributes": {
+      "login_hour": 14,
+      "new_device": false,
+      "new_location": false,
+      "failed_login_count": 0,
+      "encoded_command": false,
+      "privileged_action": false,
+      "data_transfer_mb": 4.39
+    },
+    "tags": [
+      "synthetic",
+      "baseline"
+    ]
+  },
+  {
+    "event_id": "EVT-BASELINE-000256",
+    "timestamp": "2026-07-17T11:12:54.325188+00:00",
+    "source_type": "endpoint",
+    "event_type": "file_read",
+    "severity": "info",
+    "organisation_id": "ORG-DEMO-001",
+    "user_id": "USR-104",
+    "username": "anita.sharma",
+    "device_id": "DEV-018",
+    "department": "Examinations",
+    "source_ip": "10.0.1.18",
+    "asset_id": "EXAM-APP-01",
+    "anomaly_score": 0.0585,
+    "confidence": 0.95,
+    "label": "normal",
+    "scenario_id": "USER-BASELINE",
+    "attributes": {
+      "login_hour": 15,
+      "new_device": false,
+      "new_location": false,
+      "failed_login_count": 0,
+      "encoded_command": false,
+      "privileged_action": false,
+      "data_transfer_mb": 11.98
+    },
+    "tags": [
+      "synthetic",
+      "baseline"
+    ]
+  },
+  {
+    "event_id": "EVT-BASELINE-000257",
+    "timestamp": "2026-07-17T11:27:54.325188+00:00",
+    "source_type": "authentication",
+    "event_type": "login_success",
+    "severity": "info",
+    "organisation_id": "ORG-DEMO-001",
+    "user_id": "USR-104",
+    "username": "anita.sharma",
+    "device_id": "DEV-018",
+    "department": "Examinations",
+    "source_ip": "10.0.1.18",
+    "asset_id": "EXAM-APP-01",
+    "anomaly_score": 0.0983,
+    "confidence": 0.95,
+    "label": "normal",
+    "scenario_id": "USER-BASELINE",
+    "attributes": {
+      "login_hour": 16,
+      "new_device": false,
+      "new_location": false,
+      "failed_login_count": 0,
+      "encoded_command": false,
+      "privileged_action": false,
+      "data_transfer_mb": 4.95
+    },
+    "tags": [
+      "synthetic",
+      "baseline"
+    ]
+  },
+  {
+    "event_id": "EVT-BASELINE-000258",
+    "timestamp": "2026-07-17T11:42:54.325188+00:00",
+    "source_type": "authentication",
+    "event_type": "login_success",
+    "severity": "info",
+    "organisation_id": "ORG-DEMO-001",
+    "user_id": "USR-104",
+    "username": "anita.sharma",
+    "device_id": "DEV-018",
+    "department": "Examinations",
+    "source_ip": "10.0.1.18",
+    "asset_id": "EXAM-APP-01",
+    "anomaly_score": 0.1296,
+    "confidence": 0.95,
+    "label": "normal",
+    "scenario_id": "USER-BASELINE",
+    "attributes": {
+      "login_hour": 10,
+      "new_device": false,
+      "new_location": false,
+      "failed_login_count": 0,
+      "encoded_command": false,
+      "privileged_action": false,
+      "data_transfer_mb": 3.98
+    },
+    "tags": [
+      "synthetic",
+      "baseline"
+    ]
+  },
+  {
+    "event_id": "EVT-BASELINE-000259",
+    "timestamp": "2026-07-17T11:57:54.325188+00:00",
+    "source_type": "endpoint",
+    "event_type": "application_access",
+    "severity": "info",
+    "organisation_id": "ORG-DEMO-001",
+    "user_id": "USR-104",
+    "username": "anita.sharma",
+    "device_id": "DEV-018",
+    "department": "Examinations",
+    "source_ip": "10.0.1.18",
+    "asset_id": "EXAM-APP-01",
+    "anomaly_score": 0.1321,
+    "confidence": 0.95,
+    "label": "normal",
+    "scenario_id": "USER-BASELINE",
+    "attributes": {
+      "login_hour": 11,
+      "new_device": false,
+      "new_location": false,
+      "failed_login_count": 0,
+      "encoded_command": false,
+      "privileged_action": false,
+      "data_transfer_mb": 1.62
+    },
+    "tags": [
+      "synthetic",
+      "baseline"
+    ]
+  },
+  {
+    "event_id": "EVT-BASELINE-000260",
+    "timestamp": "2026-07-17T12:12:54.325188+00:00",
+    "source_type": "network",
+    "event_type": "internal_connection",
+    "severity": "info",
+    "organisation_id": "ORG-DEMO-001",
+    "user_id": "USR-104",
+    "username": "anita.sharma",
+    "device_id": "DEV-018",
+    "department": "Examinations",
+    "source_ip": "10.0.1.18",
+    "asset_id": "EXAM-APP-01",
+    "anomaly_score": 0.1146,
+    "confidence": 0.95,
+    "label": "normal",
+    "scenario_id": "USER-BASELINE",
+    "attributes": {
+      "login_hour": 12,
+      "new_device": false,
+      "new_location": false,
+      "failed_login_count": 0,
+      "encoded_command": false,
+      "privileged_action": false,
+      "data_transfer_mb": 4.17
+    },
+    "tags": [
+      "synthetic",
+      "baseline"
+    ]
+  },
+  {
+    "event_id": "EVT-BASELINE-000261",
+    "timestamp": "2026-07-17T12:27:54.325188+00:00",
+    "source_type": "endpoint",
+    "event_type": "file_read",
+    "severity": "info",
+    "organisation_id": "ORG-DEMO-001",
+    "user_id": "USR-104",
+    "username": "anita.sharma",
+    "device_id": "DEV-018",
+    "department": "Examinations",
+    "source_ip": "10.0.1.18",
+    "asset_id": "EXAM-APP-01",
+    "anomaly_score": 0.1252,
+    "confidence": 0.95,
+    "label": "normal",
+    "scenario_id": "USER-BASELINE",
+    "attributes": {
+      "login_hour": 13,
+      "new_device": false,
+      "new_location": false,
+      "failed_login_count": 0,
+      "encoded_command": false,
+      "privileged_action": false,
+      "data_transfer_mb": 1.16
+    },
+    "tags": [
+      "synthetic",
+      "baseline"
+    ]
+  },
+  {
+    "event_id": "EVT-BASELINE-000262",
+    "timestamp": "2026-07-17T12:42:54.325188+00:00",
+    "source_type": "authentication",
+    "event_type": "login_success",
+    "severity": "info",
+    "organisation_id": "ORG-DEMO-001",
+    "user_id": "USR-104",
+    "username": "anita.sharma",
+    "device_id": "DEV-018",
+    "department": "Examinations",
+    "source_ip": "10.0.1.18",
+    "asset_id": "EXAM-APP-01",
+    "anomaly_score": 0.1314,
+    "confidence": 0.95,
+    "label": "normal",
+    "scenario_id": "USER-BASELINE",
+    "attributes": {
+      "login_hour": 14,
+      "new_device": false,
+      "new_location": false,
+      "failed_login_count": 0,
+      "encoded_command": false,
+      "privileged_action": false,
+      "data_transfer_mb": 6.7
+    },
+    "tags": [
+      "synthetic",
+      "baseline"
+    ]
+  },
+  {
+    "event_id": "EVT-ATTACK-000263",
+    "timestamp": "2026-07-17T14:57:54.325188+00:00",
+    "source_type": "email",
+    "event_type": "phishing_email_detected",
+    "severity": "medium",
+    "organisation_id": "ORG-DEMO-001",
+    "user_id": "USR-104",
+    "username": "anita.sharma",
+    "device_id": "DEV-018",
+    "department": "Examinations",
+    "source_ip": "203.0.113.25",
+    "asset_id": "DEV-018",
+    "anomaly_score": 0.61,
+    "confidence": 0.92,
+    "label": "malicious",
+    "scenario_id": "SCN-SILENT-INTRUDER-001",
+    "attack_stage": 1,
+    "attributes": {
+      "spf_result": "fail",
+      "dkim_result": "fail",
+      "dmarc_result": "fail",
+      "user_clicked": true
+    },
+    "tags": [
+      "synthetic",
+      "attack",
+      "silent-intruder"
+    ]
+  },
+  {
+    "event_id": "EVT-ATTACK-000264",
+    "timestamp": "2026-07-17T15:05:54.325188+00:00",
+    "source_type": "authentication",
+    "event_type": "login_success",
+    "severity": "medium",
+    "organisation_id": "ORG-DEMO-001",
+    "user_id": "USR-104",
+    "username": "anita.sharma",
+    "device_id": "DEV-018",
+    "department": "Examinations",
+    "source_ip": "203.0.113.25",
+    "asset_id": "IDP-001",
+    "anomaly_score": 0.78,
+    "confidence": 0.88,
+    "label": "malicious",
+    "scenario_id": "SCN-SILENT-INTRUDER-001",
+    "attack_stage": 2,
+    "attributes": {
+      "login_hour": 2,
+      "new_device": true,
+      "new_location": true,
+      "failed_login_count": 6,
+      "mfa_used": false,
+      "impossible_travel": true
+    },
+    "tags": [
+      "synthetic",
+      "attack",
+      "silent-intruder"
+    ]
+  },
+  {
+    "event_id": "EVT-ATTACK-000265",
+    "timestamp": "2026-07-17T15:11:54.325188+00:00",
+    "source_type": "endpoint",
+    "event_type": "process_execution",
+    "severity": "high",
+    "organisation_id": "ORG-DEMO-001",
+    "user_id": "USR-104",
+    "username": "anita.sharma",
+    "device_id": "DEV-018",
+    "department": "Examinations",
+    "source_ip": "10.0.1.18",
+    "asset_id": "DEV-018",
+    "anomaly_score": 0.88,
+    "confidence": 0.93,
+    "label": "malicious",
+    "scenario_id": "SCN-SILENT-INTRUDER-001",
+    "attack_stage": 3,
+    "attributes": {
+      "process_name": "powershell.exe",
+      "parent_process": "winword.exe",
+      "encoded_command": true,
+      "user_normally_uses_powershell": false
+    },
+    "tags": [
+      "synthetic",
+      "attack",
+      "silent-intruder"
+    ]
+  },
+  {
+    "event_id": "EVT-ATTACK-000266",
+    "timestamp": "2026-07-17T15:19:54.325188+00:00",
+    "source_type": "endpoint",
+    "event_type": "credential_dumping",
+    "severity": "critical",
+    "organisation_id": "ORG-DEMO-001",
+    "user_id": "USR-104",
+    "username": "anita.sharma",
+    "device_id": "DEV-018",
+    "department": "Examinations",
+    "source_ip": "10.0.1.18",
+    "asset_id": "DEV-018",
+    "anomaly_score": 0.96,
+    "confidence": 0.95,
+    "label": "malicious",
+    "scenario_id": "SCN-SILENT-INTRUDER-001",
+    "attack_stage": 4,
+    "attributes": {
+      "target_process": "lsass.exe",
+      "memory_access": true,
+      "privilege_escalation_observed": true
+    },
+    "tags": [
+      "synthetic",
+      "attack",
+      "silent-intruder"
+    ]
+  },
+  {
+    "event_id": "EVT-ATTACK-000267",
+    "timestamp": "2026-07-17T15:28:54.325188+00:00",
+    "source_type": "network",
+    "event_type": "network_service_discovery",
+    "severity": "high",
+    "organisation_id": "ORG-DEMO-001",
+    "user_id": "USR-104",
+    "username": "anita.sharma",
+    "device_id": "DEV-018",
+    "department": "Examinations",
+    "source_ip": "10.0.1.18",
+    "asset_id": "EXAM-APP-01",
+    "anomaly_score": 0.84,
+    "confidence": 0.9,
+    "label": "malicious",
+    "scenario_id": "SCN-SILENT-INTRUDER-001",
+    "attack_stage": 5,
+    "attributes": {
+      "destination_count": 24,
+      "port_count": 16,
+      "previously_contacted_asset": false
+    },
+    "tags": [
+      "synthetic",
+      "attack",
+      "silent-intruder"
+    ]
+  },
+  {
+    "event_id": "EVT-ATTACK-000268",
+    "timestamp": "2026-07-17T15:40:54.325188+00:00",
+    "source_type": "network",
+    "event_type": "remote_service_connection",
+    "severity": "critical",
+    "organisation_id": "ORG-DEMO-001",
+    "user_id": "USR-104",
+    "username": "anita.sharma",
+    "device_id": "DEV-018",
+    "department": "Examinations",
+    "source_ip": "10.0.1.18",
+    "asset_id": "EXAM-APP-01",
+    "anomaly_score": 0.93,
+    "confidence": 0.94,
+    "label": "malicious",
+    "scenario_id": "SCN-SILENT-INTRUDER-001",
+    "attack_stage": 6,
+    "attributes": {
+      "protocol": "RDP",
+      "service_account_used": true,
+      "first_time_connection": true
+    },
+    "tags": [
+      "synthetic",
+      "attack",
+      "silent-intruder"
+    ]
+  },
+  {
+    "event_id": "EVT-ATTACK-000269",
+    "timestamp": "2026-07-17T15:53:54.325188+00:00",
+    "source_type": "endpoint",
+    "event_type": "sensitive_database_access",
+    "severity": "critical",
+    "organisation_id": "ORG-DEMO-001",
+    "user_id": "USR-104",
+    "username": "anita.sharma",
+    "device_id": "DEV-018",
+    "department": "Examinations",
+    "source_ip": "10.0.3.20",
+    "asset_id": "EXAM-DB-01",
+    "anomaly_score": 0.97,
+    "confidence": 0.96,
+    "label": "malicious",
+    "scenario_id": "SCN-SILENT-INTRUDER-001",
+    "attack_stage": 7,
+    "attributes": {
+      "records_accessed": 18432,
+      "query_type": "bulk_select",
+      "access_outside_role": true
+    },
+    "tags": [
+      "synthetic",
+      "attack",
+      "silent-intruder"
+    ]
+  },
+  {
+    "event_id": "EVT-ATTACK-000270",
+    "timestamp": "2026-07-17T16:05:54.325188+00:00",
+    "source_type": "network",
+    "event_type": "unusual_data_transfer",
+    "severity": "critical",
+    "organisation_id": "ORG-DEMO-001",
+    "user_id": "USR-104",
+    "username": "anita.sharma",
+    "device_id": "DEV-018",
+    "department": "Examinations",
+    "source_ip": "10.0.3.20",
+    "asset_id": "EXAM-DB-01",
+    "anomaly_score": 0.99,
+    "confidence": 0.97,
+    "label": "malicious",
+    "scenario_id": "SCN-SILENT-INTRUDER-001",
+    "attack_stage": 8,
+    "attributes": {
+      "data_transfer_mb": 742.8,
+      "normal_transfer_mb": 12.4,
+      "destination_seen_before": false,
+      "transfer_pattern": "staged"
+    },
+    "tags": [
+      "synthetic",
+      "attack",
+      "silent-intruder"
+    ]
+  }
+]

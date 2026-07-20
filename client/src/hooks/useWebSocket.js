@@ -1,66 +1,235 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
+
+const MAX_ALERTS = 50;
+const RECONNECT_DELAY_MS = 3000;
+
+function createEventKey(event) {
+  return (
+    event.event_id ||
+    event.alert_id ||
+    event.scan_id ||
+    event.id ||
+    [
+      event.type,
+      event.url,
+      event.timestamp,
+      event.created_at,
+      event.message,
+    ]
+      .filter(Boolean)
+      .join('|')
+  );
+}
 
 export default function useWebSocket() {
-  const wsRef = useRef(null);
+  const socketRef = useRef(null);
+  const reconnectTimerRef = useRef(null);
+  const intentionallyClosedRef = useRef(false);
+  const mountedRef = useRef(false);
+  const seenEventKeysRef = useRef(new Set());
+
   const [connected, setConnected] = useState(false);
   const [alerts, setAlerts] = useState([]);
   const [lastEvent, setLastEvent] = useState(null);
-  const reconnectTimer = useRef(null);
+
+  const clearReconnectTimer = useCallback(() => {
+    if (reconnectTimerRef.current) {
+      window.clearTimeout(reconnectTimerRef.current);
+      reconnectTimerRef.current = null;
+    }
+  }, []);
+
+  const addAlertOnce = useCallback((eventData) => {
+    const eventKey = createEventKey(eventData);
+
+    if (
+      eventKey &&
+      seenEventKeysRef.current.has(eventKey)
+    ) {
+      return;
+    }
+
+    if (eventKey) {
+      seenEventKeysRef.current.add(eventKey);
+    }
+
+    setAlerts((previousAlerts) => {
+      const nextAlerts = [
+        eventData,
+        ...previousAlerts,
+      ].slice(0, MAX_ALERTS);
+
+      const retainedKeys = new Set(
+        nextAlerts
+          .map(createEventKey)
+          .filter(Boolean),
+      );
+
+      seenEventKeysRef.current = retainedKeys;
+
+      return nextAlerts;
+    });
+  }, []);
 
   const connect = useCallback(() => {
+    if (!mountedRef.current) {
+      return;
+    }
+
     const token = localStorage.getItem('token');
-    if (!token) return;
 
-    const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-    const host = window.location.hostname;
-    const wsUrl = `${protocol}://${host}:5000/ws?token=${token}`;
+    if (!token) {
+      setConnected(false);
+      return;
+    }
 
-    const ws = new WebSocket(wsUrl);
+    const existingSocket = socketRef.current;
 
-    ws.onopen = () => {
+    if (
+      existingSocket &&
+      (
+        existingSocket.readyState ===
+          WebSocket.OPEN ||
+        existingSocket.readyState ===
+          WebSocket.CONNECTING
+      )
+    ) {
+      return;
+    }
+
+    clearReconnectTimer();
+    intentionallyClosedRef.current = false;
+
+    const protocol =
+      window.location.protocol === 'https:'
+        ? 'wss'
+        : 'ws';
+
+    const hostname = window.location.hostname;
+
+    const socketUrl =
+      `${protocol}://${hostname}:5000/ws` +
+      `?token=${encodeURIComponent(token)}`;
+
+    const socket = new WebSocket(socketUrl);
+    socketRef.current = socket;
+
+    socket.onopen = () => {
+      if (!mountedRef.current) {
+        socket.close();
+        return;
+      }
+
       console.log('[WS] Connected');
       setConnected(true);
     };
 
-    ws.onmessage = (event) => {
+    socket.onmessage = (messageEvent) => {
+      if (!mountedRef.current) {
+        return;
+      }
+
       try {
-        const data = JSON.parse(event.data);
+        const eventData = JSON.parse(
+          messageEvent.data,
+        );
 
-        setLastEvent(data);
+        setLastEvent(eventData);
 
-        if (data.type === 'threat_alert') {
-          setAlerts((prev) => [data, ...prev].slice(0, 50));
+        if (
+          eventData.type === 'threat_alert' ||
+          eventData.type === 'scan_complete'
+        ) {
+          addAlertOnce(eventData);
         }
-
-        if (data.type === 'scan_complete') {
-          setAlerts((prev) => [data, ...prev].slice(0, 50));
-        }
-      } catch {}
+      } catch (error) {
+        console.warn(
+          '[WS] Ignored invalid message:',
+          error,
+        );
+      }
     };
 
-    ws.onclose = () => {
-      console.log('[WS] Disconnected');
+    socket.onerror = () => {
+      if (
+        socket.readyState === WebSocket.OPEN ||
+        socket.readyState ===
+          WebSocket.CONNECTING
+      ) {
+        socket.close();
+      }
+    };
+
+    socket.onclose = () => {
+      if (socketRef.current === socket) {
+        socketRef.current = null;
+      }
+
+      if (!mountedRef.current) {
+        return;
+      }
+
       setConnected(false);
-      // Auto-reconnect after 3 seconds
-      reconnectTimer.current = setTimeout(connect, 3000);
-    };
 
-    ws.onerror = () => {
-      ws.close();
-    };
+      if (intentionallyClosedRef.current) {
+        return;
+      }
 
-    wsRef.current = ws;
-  }, []);
+      console.log('[WS] Disconnected');
+
+      clearReconnectTimer();
+
+      reconnectTimerRef.current =
+        window.setTimeout(() => {
+          reconnectTimerRef.current = null;
+          connect();
+        }, RECONNECT_DELAY_MS);
+    };
+  }, [addAlertOnce, clearReconnectTimer]);
 
   useEffect(() => {
+    mountedRef.current = true;
+    intentionallyClosedRef.current = false;
+
     connect();
+
     return () => {
-      if (wsRef.current) wsRef.current.close();
-      if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
+      mountedRef.current = false;
+      intentionallyClosedRef.current = true;
+
+      clearReconnectTimer();
+
+      const socket = socketRef.current;
+      socketRef.current = null;
+
+      if (
+        socket &&
+        (
+          socket.readyState === WebSocket.OPEN ||
+          socket.readyState ===
+            WebSocket.CONNECTING
+        )
+      ) {
+        socket.close();
+      }
     };
-  }, [connect]);
+  }, [clearReconnectTimer, connect]);
 
-  const clearAlerts = useCallback(() => setAlerts([]), []);
+  const clearAlerts = useCallback(() => {
+    seenEventKeysRef.current.clear();
+    setAlerts([]);
+    setLastEvent(null);
+  }, []);
 
-  return { connected, alerts, lastEvent, clearAlerts };
+  return {
+    connected,
+    alerts,
+    lastEvent,
+    clearAlerts,
+  };
 }
