@@ -228,40 +228,6 @@ CyberShield integrates AI-assisted cybersecurity analytics including:
 
 ---
 
-# 📷 Screenshots
-
-> Add screenshots here
-
-## Dashboard
-
-<img src="screenshots/dashboard.png"/>
-
----
-
-## Email Analyzer
-
-<img src="screenshots/email-analyzer.png"/>
-
----
-
-## Cyber Resilience
-
-<img src="screenshots/resilience.png"/>
-
----
-
-## Response Orchestrator
-
-<img src="screenshots/orchestrator.png"/>
-
----
-
-## Pen Testing
-
-<img src="screenshots/pentest.png"/>
-
----
-
 # 🔐 Security Features
 
 - JWT Authentication
@@ -389,16 +355,6 @@ The platform has been tested using:
 - Graph-based Attack Path Analysis
 - AI Security Copilot
 - Real-time Streaming Analytics
-
----
-
-# 📌 Resume Highlights
-
-- Developed a cloud-native AI-powered Security Operations Center using React, FastAPI, Express.js, PostgreSQL, Redis and Microsoft Azure.
-
-- Built modular cybersecurity engines including phishing detection, email intelligence, cyber resilience assessment, vulnerability prioritization, YARA malware analysis and automated response orchestration.
-
-- Implemented secure authentication, audit logging, cloud deployment, REST APIs and production-inspired architecture following modern software engineering practices.
 
 ---
 
