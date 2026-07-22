@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
@@ -247,5 +247,45 @@ export const settings = {
   changePassword: (data) =>
     api.put('/settings/password', data),
 };
+export const orchestrator = {
+  list: () =>
+    api.get('/orchestrator/incidents'),
 
+  get: (incidentId) =>
+    api.get(`/orchestrator/incidents/${incidentId}`),
+
+  create: (detection) =>
+    api.post('/orchestrator/incidents', detection),
+
+  decide: (incidentId, decision) =>
+    api.post(
+      `/orchestrator/incidents/${incidentId}/decide`,
+      decision
+    ),
+
+  autoExecute: (incidentId) =>
+    api.post(
+      `/orchestrator/incidents/${incidentId}/auto-execute`
+    ),
+};
+
+export const vulnPriority = {
+  demo: () =>
+    api.get('/vuln-priority/demo'),
+
+  rank: (findings) =>
+    api.post('/vuln-priority/rank', findings),
+};
+
+export const audit = {
+  trail: (incidentId) =>
+    api.get('/audit/trail', {
+      params: incidentId
+        ? { incident_id: incidentId }
+        : {},
+    }),
+
+  verify: () =>
+    api.get('/audit/verify'),
+};
 export default api;

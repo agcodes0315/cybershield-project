@@ -1,30 +1,47 @@
-const express = require('express');
-const { authenticate } = require('../middleware/auth');
+﻿const express = require("express");
+const authenticate = require("../middleware/auth");
+const {
+  fetchDetectionEngine,
+  readJsonResponse,
+} = require("../utils/detectionProxy");
 
 const router = express.Router();
 
-// POST /api/reports/generate — proxy to detection engine
-router.post('/generate', authenticate, async (req, res) => {
+router.post("/generate", authenticate, async (req, res) => {
   try {
-    const response = await fetch('http://localhost:8000/api/reports/generate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(req.body),
-    });
+    const response = await fetchDetectionEngine(
+      "/api/reports/generate",
+      {
+        method: "POST",
+        body: req.body,
+        timeout: 180000,
+      }
+    );
 
     if (!response.ok) {
-      return res.status(500).json({ error: 'PDF generation failed' });
+      const result = await readJsonResponse(response);
+
+      return res.status(response.status).json(result);
     }
 
     const arrayBuffer = await response.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', 'attachment; filename=cybershield_report.pdf');
-    res.send(buffer);
-  } catch (err) {
-    console.error('[Reports] Error:', err);
-    res.status(500).json({ error: 'Report generation failed' });
+    res.setHeader("Content-Type", "application/pdf");
+
+    res.setHeader(
+      "Content-Disposition",
+      'attachment; filename="cybershield_report.pdf"'
+    );
+
+    return res.send(buffer);
+  } catch (error) {
+    console.error("[REPORT GENERATION ERROR]", error);
+
+    return res.status(502).json({
+      error: "Report generation failed",
+      detail: error.message,
+    });
   }
 });
 

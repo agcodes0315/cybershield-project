@@ -1,0 +1,5 @@
+RESOURCE_GROUP=cybershield-rg
+LOCATION=centralindia
+CONTAINER_ENV=cybershield-env
+REGISTRY=cybershieldacr86360
+LOGIN_SERVER=cybershieldacr86360.azurecr.io

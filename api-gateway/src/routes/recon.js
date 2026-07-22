@@ -1,66 +1,74 @@
-const express = require('express');
-const { authenticate } = require('../middleware/auth');
+﻿const express = require("express");
+const authenticate = require("../middleware/auth");
+const { proxyJson } = require("../utils/detectionProxy");
 
 const router = express.Router();
 
-// POST /api/recon/port-scan
-router.post('/port-scan', authenticate, async (req, res) => {
-  try {
-    const { domain } = req.body;
-    if (!domain) return res.status(400).json({ error: 'Domain is required' });
+function validateDomain(req, res) {
+  const domain = String(req.body.domain || "").trim();
 
-    const response = await fetch('http://localhost:8000/api/recon/port-scan', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ domain }),
+  if (!domain) {
+    res.status(400).json({
+      error: "Domain is required",
     });
 
-    const result = await response.json();
-    res.json(result);
-  } catch (err) {
-    console.error('[Recon] Port scan error:', err);
-    res.status(500).json({ error: 'Port scan failed' });
+    return null;
   }
+
+  return domain;
+}
+
+router.post("/port-scan", authenticate, async (req, res) => {
+  const domain = validateDomain(req, res);
+
+  if (!domain) {
+    return;
+  }
+
+  return proxyJson(
+    res,
+    "/api/recon/port-scan",
+    {
+      method: "POST",
+      body: { domain },
+      timeout: 180000,
+    }
+  );
 });
 
-// POST /api/recon/abuse-check
-router.post('/abuse-check', authenticate, async (req, res) => {
-  try {
-    const { domain } = req.body;
-    if (!domain) return res.status(400).json({ error: 'Domain is required' });
+router.post("/abuse-check", authenticate, async (req, res) => {
+  const domain = validateDomain(req, res);
 
-    const response = await fetch('http://localhost:8000/api/recon/abuse-check', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ domain }),
-    });
-
-    const result = await response.json();
-    res.json(result);
-  } catch (err) {
-    console.error('[Recon] Abuse check error:', err);
-    res.status(500).json({ error: 'Abuse check failed' });
+  if (!domain) {
+    return;
   }
+
+  return proxyJson(
+    res,
+    "/api/recon/abuse-check",
+    {
+      method: "POST",
+      body: { domain },
+    }
+  );
 });
 
-// POST /api/recon/full
-router.post('/full', authenticate, async (req, res) => {
-  try {
-    const { domain } = req.body;
-    if (!domain) return res.status(400).json({ error: 'Domain is required' });
+router.post("/full", authenticate, async (req, res) => {
+  const domain = validateDomain(req, res);
 
-    const response = await fetch('http://localhost:8000/api/recon/full', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ domain }),
-    });
-
-    const result = await response.json();
-    res.json(result);
-  } catch (err) {
-    console.error('[Recon] Full recon error:', err);
-    res.status(500).json({ error: 'Reconnaissance failed' });
+  if (!domain) {
+    return;
   }
+
+  return proxyJson(
+    res,
+    "/api/recon/full",
+    {
+      method: "POST",
+      body: { domain },
+      timeout: 240000,
+    }
+  );
 });
 
 module.exports = router;

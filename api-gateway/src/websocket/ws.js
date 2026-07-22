@@ -1,78 +1,131 @@
-const { WebSocketServer } = require('ws');
-const jwt = require('jsonwebtoken');
-const config = require('../config');
+﻿const { WebSocketServer, WebSocket } = require("ws");
+const jwt = require("jsonwebtoken");
+const config = require("../config");
 
 function setupWebSocket(server) {
-  const wss = new WebSocketServer({ server, path: '/ws' });
+  const wss = new WebSocketServer({
+    server,
+    path: "/ws",
+  });
 
-  wss.on('connection', (ws, req) => {
-    // Try to authenticate from query param
-    const url = new URL(req.url, `http://localhost`);
-    const token = url.searchParams.get('token');
+  wss.on("connection", (ws, req) => {
+    try {
+      const requestUrl = new URL(
+        req.url,
+        `http://${req.headers.host || "localhost"}`
+      );
 
-    if (token) {
-      try {
-        const decoded = jwt.verify(token, config.jwtSecret);
-        ws.userId = decoded.id;
-        ws.userEmail = decoded.email;
-        ws.isAuthenticated = true;
-      } catch {
-        ws.isAuthenticated = false;
-      }
-    } else {
+      const token = requestUrl.searchParams.get("token");
+
       ws.isAuthenticated = false;
-    }
 
-    console.log(`[WS] Client connected (auth: ${ws.isAuthenticated})`);
+      if (token) {
+        try {
+          const decoded = jwt.verify(
+            token,
+            config.jwtSecret
+          );
 
-    ws.on('message', (msg) => {
-      try {
-        const data = JSON.parse(msg);
-        if (data.type === 'ping') {
-          ws.send(JSON.stringify({ type: 'pong', timestamp: new Date().toISOString() }));
+          ws.userId = decoded.id;
+          ws.userEmail = decoded.email;
+          ws.isAuthenticated = true;
+        } catch (error) {
+          console.error(
+            "[WS AUTH ERROR]",
+            error.message
+          );
         }
-      } catch {}
-    });
+      }
 
-    ws.on('close', () => {
-      console.log('[WS] Client disconnected');
-    });
+      console.log(
+        `[WS] Client connected, authenticated=${ws.isAuthenticated}`
+      );
 
-    // Send welcome message
-    ws.send(JSON.stringify({
-      type: 'connected',
-      message: 'CyberShield WebSocket connected',
-      timestamp: new Date().toISOString(),
-    }));
+      ws.on("message", (message) => {
+        try {
+          const data = JSON.parse(
+            message.toString()
+          );
+
+          if (data.type === "ping") {
+            ws.send(
+              JSON.stringify({
+                type: "pong",
+                timestamp: new Date().toISOString(),
+              })
+            );
+          }
+        } catch (error) {
+          ws.send(
+            JSON.stringify({
+              type: "error",
+              message: "Invalid WebSocket message",
+            })
+          );
+        }
+      });
+
+      ws.on("error", (error) => {
+        console.error("[WS CLIENT ERROR]", error);
+      });
+
+      ws.on("close", () => {
+        console.log("[WS] Client disconnected");
+      });
+
+      ws.send(
+        JSON.stringify({
+          type: "connected",
+          authenticated: ws.isAuthenticated,
+          message: "CyberShield WebSocket connected",
+          timestamp: new Date().toISOString(),
+        })
+      );
+    } catch (error) {
+      console.error("[WS CONNECTION ERROR]", error);
+      ws.close();
+    }
   });
 
   return wss;
 }
 
-// Broadcast to all authenticated clients
 function broadcast(wss, event) {
-  if (!wss) return;
+  if (!wss) {
+    return;
+  }
 
   const payload = JSON.stringify(event);
 
-  wss.clients.forEach((client) => {
-    if (client.readyState === 1 && client.isAuthenticated) {
+  for (const client of wss.clients) {
+    if (
+      client.readyState === WebSocket.OPEN &&
+      client.isAuthenticated
+    ) {
       client.send(payload);
     }
-  });
+  }
 }
 
-// Broadcast to a specific user
 function broadcastToUser(wss, userId, event) {
-  if (!wss) return;
+  if (!wss) {
+    return;
+  }
 
   const payload = JSON.stringify(event);
 
-  wss.clients.forEach((client) => {
-    if (client.readyState === 1 && client.userId === userId) {
+  for (const client of wss.clients) {
+    if (
+      client.readyState === WebSocket.OPEN &&
+      String(client.userId) === String(userId)
+    ) {
       client.send(payload);
     }
-  });
+  }
 }
 
-module.exports = { setupWebSocket, broadcast, broadcastToUser };
+module.exports = {
+  setupWebSocket,
+  broadcast,
+  broadcastToUser,
+};

@@ -19,6 +19,7 @@ import Community from './pages/Community';
 import Dashboard from './pages/Dashboard';
 import EmailAnalyzer from './pages/EmailAnalyzer';
 import GoPhish from './pages/GoPhish';
+import Landing from './pages/Landing';
 import Login from './pages/Login';
 import PenTest from './pages/PenTest';
 import Recon from './pages/Recon';
@@ -41,9 +42,28 @@ function PublicRoute({ children }) {
   return children;
 }
 
+function HomeRoute() {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return <LoadingScreen />;
+  }
+
+  if (user) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return <Landing />;
+}
+
 function AppRoutes() {
   return (
     <Routes>
+      <Route
+        path="/"
+        element={<HomeRoute />}
+      />
+
       <Route
         path="/login"
         element={
@@ -120,13 +140,8 @@ function AppRoutes() {
       </Route>
 
       <Route
-        path="/"
-        element={<Navigate to="/dashboard" replace />}
-      />
-
-      <Route
         path="*"
-        element={<Navigate to="/dashboard" replace />}
+        element={<Navigate to="/" replace />}
       />
     </Routes>
   );

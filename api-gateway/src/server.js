@@ -1,17 +1,55 @@
-const http = require('http');
-const app = require('./app');
-const config = require('./config');
-const { setupWebSocket } = require('./websocket/ws');
+﻿const http = require("http");
+const app = require("./app");
+const config = require("./config");
+const db = require("./config/db");
+const { setupWebSocket } = require("./websocket/ws");
 
 const server = http.createServer(app);
 
-// Attach WebSocket
 const wss = setupWebSocket(server);
+app.set("wss", wss);
 
-// Make wss accessible to routes
-app.set('wss', wss);
+server.listen(config.port, "0.0.0.0", async () => {
+  console.log(
+    `[CyberShield API] Running on 0.0.0.0:${config.port}`
+  );
 
-server.listen(config.port, () => {
-  console.log(`[CyberShield API] Running on port ${config.port}`);
-  console.log(`[CyberShield WS]  WebSocket ready on ws://localhost:${config.port}`);
+  console.log(
+    `[CyberShield WS] WebSocket available at /ws`
+  );
+
+  console.log(
+    `[CyberShield Detection] ${config.detectionEngineUrl}`
+  );
+
+  try {
+    await db.testConnection();
+    console.log("[CyberShield DB] PostgreSQL connection verified");
+  } catch (error) {
+    console.error(
+      "[CyberShield DB] PostgreSQL connection failed:",
+      error.message
+    );
+  }
 });
+
+async function shutdown(signal) {
+  console.log(`[CyberShield API] Received ${signal}. Shutting down.`);
+
+  server.close(async () => {
+    try {
+      await db.pool.end();
+    } catch (error) {
+      console.error("[CyberShield DB] Shutdown error:", error);
+    }
+
+    process.exit(0);
+  });
+
+  setTimeout(() => {
+    process.exit(1);
+  }, 10000).unref();
+}
+
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("SIGINT", () => shutdown("SIGINT"));

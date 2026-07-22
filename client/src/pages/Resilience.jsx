@@ -1,1265 +1,273 @@
+import { useState, useEffect } from 'react';
+import { useAuth } from '../context/AuthContext';
+import { vulnPriority, orchestrator, audit } from '../services/api';
+import useWebSocket from '../hooks/useWebSocket';
 import {
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
+} from 'recharts';
 
-import {
-  resilience,
-  responseAutomation,
-} from '../services/resilienceApi';
+const BAND_COLOR = {
+  IMMEDIATE: '#f87171',
+  URGENT: '#fb923c',
+  SCHEDULED: '#fbbf24',
+  MONITOR: '#34d399',
+};
 
-import './Resilience.css';
-
-const DEMO_EVENTS = [
-  {
-    event_id: 'EVT-DEMO-001',
-    timestamp: '2026-07-18T10:00:00+00:00',
-    event_type: 'authentication',
-    source_type: 'identity',
-    organisation_id: 'ORG-DEMO-001',
-    user_id: 'USR-104',
-    device_id: 'DEV-018',
-    asset_id: 'DEV-018',
-    label: 'malicious',
-    attributes: {
-      authentication_result: 'success',
-      unusual_login_time: true,
-      source_country: 'unknown',
-      failed_attempts_before_success: 8,
-    },
+const EXPLAIN_RULES = {
+  severity: {
+    critical: 'CVSS-equivalent severity: Critical',
+    high: 'CVSS-equivalent severity: High',
+    medium: 'Medium severity',
+    low: 'Low severity',
   },
-  {
-    event_id: 'EVT-DEMO-002',
-    timestamp: '2026-07-18T10:03:00+00:00',
-    event_type: 'process_execution',
-    source_type: 'endpoint',
-    organisation_id: 'ORG-DEMO-001',
-    user_id: 'USR-104',
-    device_id: 'DEV-018',
-    asset_id: 'DEV-018',
-    label: 'malicious',
-    attributes: {
-      process_name: 'powershell.exe',
-      encoded_command: true,
-      parent_process: 'winword.exe',
-    },
+  exposure: {
+    internet_facing: 'Internet facing',
+    internal_network: 'Internal network only',
+    isolated: 'Isolated / air-gapped',
   },
-  {
-    event_id: 'EVT-DEMO-003',
-    timestamp: '2026-07-18T10:06:00+00:00',
-    event_type: 'credential_dumping',
-    source_type: 'endpoint',
-    organisation_id: 'ORG-DEMO-001',
-    user_id: 'USR-104',
-    device_id: 'DEV-018',
-    asset_id: 'DEV-018',
-    label: 'malicious',
-    attributes: {
-      target_process: 'lsass.exe',
-      memory_access: true,
-      credential_material_accessed: true,
-    },
+  exploit_status: {
+    known_exploited: 'Known exploited in the wild',
+    public_poc: 'Public proof-of-concept exists',
+    theoretical: 'No known exploit yet',
   },
-  {
-    event_id: 'EVT-DEMO-004',
-    timestamp: '2026-07-18T10:10:00+00:00',
-    event_type: 'account_discovery',
-    source_type: 'endpoint',
-    organisation_id: 'ORG-DEMO-001',
-    user_id: 'USR-104',
-    device_id: 'DEV-018',
-    asset_id: 'DEV-018',
-    label: 'malicious',
-    attributes: {
-      command: 'net user /domain',
-      domain_enumeration: true,
-    },
-  },
-];
-
-function percentage(value) {
-  const number = Number(value || 0);
-  return `${(number * 100).toFixed(1)}%`;
-}
-
-function readable(value) {
-  return String(value || '')
-    .replaceAll('_', ' ')
-    .replace(/\b\w/g, (character) =>
-      character.toUpperCase(),
-    );
-}
-
-function statusClass(status) {
-  switch (status) {
-    case 'completed':
-    case 'approved':
-    case 'not_required':
-      return 'resilience-badge success';
-
-    case 'rejected':
-    case 'failed':
-      return 'resilience-badge danger';
-
-    case 'pending':
-    case 'pending_approval':
-      return 'resilience-badge warning';
-
-    default:
-      return 'resilience-badge info';
-  }
-}
-
-function extractErrorMessage(requestError) {
-  return (
-    requestError?.response?.data?.detail ||
-    requestError?.response?.data?.error ||
-    requestError?.response?.data?.message ||
-    requestError?.message ||
-    'The request could not be completed.'
-  );
-}
-
-function getAuditIdentity(record) {
-  return (
-    record.record_id ||
-    record.hash ||
-    [
-      record.sequence_number,
-      record.event_type,
-      record.actor_id,
-      record.timestamp,
-      record.execution_step_id,
-    ]
-      .filter(Boolean)
-      .join('|')
-  );
-}
-
-function getAuditDescription(record) {
-  const actionType =
-    record.action_type ||
-    record.details?.action_type ||
-    record.metadata?.action_type ||
-    record.payload?.action_type;
-
-  const stepNumber =
-    record.step_number ||
-    record.details?.step_number ||
-    record.metadata?.step_number ||
-    record.payload?.step_number;
-
-  if (actionType && stepNumber) {
-    return `Step ${stepNumber}: ${readable(actionType)}`;
-  }
-
-  if (actionType) {
-    return readable(actionType);
-  }
-
-  return '';
-}
+};
 
 export default function Resilience() {
-  const [incidentId, setIncidentId] = useState(
-    `INC-DEMO-${Date.now()}`,
-  );
+  const { user } = useAuth();
+  const { connected, alerts } = useWebSocket();
+  const [queue, setQueue] = useState([]);
+  const [incidents, setIncidents] = useState([]);
+  const [auditStatus, setAuditStatus] = useState(null);
+  const [expanded, setExpanded] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
 
-  const [sourceNodeId, setSourceNodeId] =
-    useState('DEV-018');
-
-  const [eventText, setEventText] = useState(
-    JSON.stringify(DEMO_EVENTS, null, 2),
-  );
-
-  const [result, setResult] = useState(null);
-  const [execution, setExecution] = useState(null);
-
-  const [auditRecords, setAuditRecords] =
-    useState([]);
-
-  const [
-    auditVerification,
-    setAuditVerification,
-  ] = useState(null);
-
-  const [loading, setLoading] = useState(false);
-
-  const [actionLoading, setActionLoading] =
-    useState(false);
-
-  const [executionAttempted, setExecutionAttempted] =
-    useState(false);
-
-  const [error, setError] = useState('');
-
-  const [approverId, setApproverId] = useState(
-    'soc.analyst.one',
-  );
-
-  /*
-   * This synchronous ref prevents two clicks from
-   * starting two API requests before React finishes
-   * updating actionLoading.
-   */
-  const actionLockRef = useRef(false);
-
-  const pendingSteps = useMemo(() => {
-    if (!execution?.steps) {
-      return [];
-    }
-
-    return execution.steps.filter(
-      (step) =>
-        step.status === 'pending_approval',
-    );
-  }, [execution]);
-
-  const approvedSteps = useMemo(() => {
-    if (!execution?.steps) {
-      return [];
-    }
-
-    return execution.steps.filter(
-      (step) => step.status === 'approved',
-    );
-  }, [execution]);
-
-  const completedSteps = useMemo(() => {
-    if (!execution?.steps) {
-      return [];
-    }
-
-    return execution.steps.filter(
-      (step) => step.status === 'completed',
-    );
-  }, [execution]);
-
-  const rejectedSteps = useMemo(() => {
-    if (!execution?.steps) {
-      return [];
-    }
-
-    return execution.steps.filter(
-      (step) => step.status === 'rejected',
-    );
-  }, [execution]);
-
-  /*
-   * Deduplicates only records that are genuinely the
-   * same backend audit record.
-   *
-   * It does not collapse four legitimate Step Completed
-   * records belonging to four different playbook steps.
-   */
-  const uniqueAuditRecords = useMemo(() => {
-    const uniqueRecords = new Map();
-
-    for (const record of auditRecords) {
-      const identity = getAuditIdentity(record);
-
-      if (!uniqueRecords.has(identity)) {
-        uniqueRecords.set(identity, record);
-      }
-    }
-
-    return Array.from(
-      uniqueRecords.values(),
-    ).sort(
-      (firstRecord, secondRecord) =>
-        Number(
-          firstRecord.sequence_number || 0,
-        ) -
-        Number(
-          secondRecord.sequence_number || 0,
-        ),
-    );
-  }, [auditRecords]);
-
-  const hasPendingHumanDecisions =
-    pendingSteps.length > 0;
-
-  const hasApprovedSteps =
-    approvedSteps.length > 0;
-
-  const executionFinished =
-    execution?.status === 'completed' ||
-    execution?.status === 'rejected' ||
-    execution?.status === 'failed';
-
-  /*
-   * Important workflow:
-   *
-   * 1. Resolve every human-gated decision.
-   * 2. Execute the complete approved response once.
-   *
-   * This prevents automatic steps from executing once
-   * before approval and then executing again afterward.
-   */
-  const canExecuteResponse =
-    Boolean(execution) &&
-    !actionLoading &&
-    !executionAttempted &&
-    !executionFinished &&
-    !hasPendingHumanDecisions &&
-    hasApprovedSteps;
-
-  const resetActionState = () => {
-    actionLockRef.current = false;
-    setActionLoading(false);
-  };
-
-  const loadDemo = () => {
-    setIncidentId(`INC-DEMO-${Date.now()}`);
-    setSourceNodeId('DEV-018');
-
-    setEventText(
-      JSON.stringify(DEMO_EVENTS, null, 2),
-    );
-
-    setResult(null);
-    setExecution(null);
-    setAuditRecords([]);
-    setAuditVerification(null);
-    setExecutionAttempted(false);
-    setError('');
-
-    actionLockRef.current = false;
-  };
-
-  const refreshAudit = async (executionId) => {
-    if (!executionId) {
-      return;
-    }
-
+  const loadAll = async () => {
+    setLoadError('');
     try {
-      const [
-        recordsResponse,
-        verifyResponse,
-      ] = await Promise.all([
-        responseAutomation.executionAudit(
-          executionId,
-        ),
-        responseAutomation.verifyAudit(),
+      const [q, inc] = await Promise.all([
+        vulnPriority.demo(),
+        orchestrator.list(),
       ]);
-
-      const receivedRecords = Array.isArray(
-        recordsResponse.data,
-      )
-        ? recordsResponse.data
-        : [];
-
-      setAuditRecords(receivedRecords);
-      setAuditVerification(verifyResponse.data);
-    } catch (requestError) {
-      setError(
-        extractErrorMessage(requestError),
+      setQueue(Array.isArray(q.data?.queue) ? q.data.queue : []);
+      setIncidents(Array.isArray(inc.data) ? inc.data : []);
+    } catch (e) {
+      console.error('Resilience load failed', e);
+      setLoadError(
+        e?.response?.status === 404
+          ? 'Backend routes not found (404) — /vuln-priority and /orchestrator may not be registered in the API gateway yet.'
+          : 'Could not reach the resilience backend.'
       );
     }
+    setLoading(false);
   };
 
-  const analyseIncident = async () => {
-    if (loading || actionLockRef.current) {
-      return;
-    }
-
-    actionLockRef.current = true;
-
-    setLoading(true);
-    setError('');
-    setResult(null);
-    setExecution(null);
-    setAuditRecords([]);
-    setAuditVerification(null);
-    setExecutionAttempted(false);
-
+  const checkAuditIntegrity = async () => {
     try {
-      const events = JSON.parse(eventText);
-
-      if (
-        !Array.isArray(events) ||
-        events.length === 0
-      ) {
-        throw new Error(
-          'Events must be a non-empty JSON array.',
-        );
-      }
-
-      const response = await resilience.analyse({
-        incident_id: incidentId.trim(),
-        events,
-        source_node_id:
-          sourceNodeId.trim() || null,
-        requested_by:
-          'cybershield.frontend',
-        prediction_horizon: 3,
-        maximum_recommendations: 5,
-        auto_create_response: true,
-      });
-
-      const responseData = response.data;
-      const responseExecution =
-        responseData.response_execution || null;
-
-      setResult(responseData);
-      setExecution(responseExecution);
-
-      if (responseExecution?.execution_id) {
-        await refreshAudit(
-          responseExecution.execution_id,
-        );
-      }
-    } catch (requestError) {
-      setError(
-        extractErrorMessage(requestError),
-      );
-    } finally {
-      actionLockRef.current = false;
-      setLoading(false);
+      const r = await audit.verify();
+      setAuditStatus(r.data);
+    } catch {
+      setAuditStatus({ valid: false, error: true });
     }
   };
 
-  const submitDecision = async (
-    step,
-    approved,
-  ) => {
-    if (
-      !execution ||
-      actionLoading ||
-      actionLockRef.current
-    ) {
-      return;
-    }
+  useEffect(() => {
+    loadAll();
+    checkAuditIntegrity();
+    const interval = setInterval(loadAll, 8000);
+    return () => clearInterval(interval);
+  }, []);
 
-    if (
-      step.status !== 'pending_approval'
-    ) {
-      return;
-    }
+  const criticalAssets = queue.filter(q => q.priority_band === 'IMMEDIATE').length;
+  const openIncidents = incidents.filter(
+    i => Array.isArray(i.actions) && i.actions.some(a => a.status === 'PENDING_APPROVAL')
+  ).length;
+  const containedIncidents = incidents.filter(
+    i => Array.isArray(i.actions) &&
+      i.actions.every(a => a.status !== 'PENDING_APPROVAL' && a.status !== 'AUTO_EXECUTABLE')
+  ).length;
+  const containmentRate = incidents.length
+    ? Math.round((containedIncidents / incidents.length) * 100)
+    : 0;
+  const overallRisk = criticalAssets > 2 ? 'High' : criticalAssets > 0 ? 'Medium' : 'Low';
+  const riskColor = overallRisk === 'High' ? '#f87171' : overallRisk === 'Medium' ? '#fbbf24' : '#34d399';
 
-    if (!approverId.trim()) {
-      setError('Enter an approver ID.');
-      return;
-    }
+  const execMetrics = [
+    { label: 'Overall Risk', value: overallRisk, color: riskColor, sub: `${criticalAssets} critical findings` },
+    { label: 'Open Incidents', value: openIncidents, color: '#38bdf8', sub: 'Awaiting analyst approval' },
+    { label: 'Containment Rate', value: `${containmentRate}%`, color: '#818cf8', sub: `${containedIncidents}/${incidents.length || 0} resolved` },
+    {
+      label: 'Audit Integrity',
+      value: auditStatus?.valid ? 'Verified' : auditStatus ? 'BROKEN' : '—',
+      color: auditStatus?.valid ? '#34d399' : '#f87171',
+      sub: auditStatus?.entries_checked != null ? `${auditStatus.entries_checked} entries checked` : 'Checking...',
+    },
+  ];
 
-    actionLockRef.current = true;
-    setActionLoading(true);
-    setError('');
-
-    const executionId =
-      execution.execution_id;
-
-    try {
-      const response =
-        await responseAutomation.submitApproval(
-          executionId,
-          step.execution_step_id,
-          approverId.trim(),
-          approved,
-          approved
-            ? 'Approved after SOC investigation.'
-            : 'Rejected after SOC investigation.',
-        );
-
-      setExecution(response.data);
-
-      await refreshAudit(executionId);
-    } catch (requestError) {
-      setError(
-        extractErrorMessage(requestError),
-      );
-    } finally {
-      resetActionState();
-    }
-  };
-
-  const executeResponse = async () => {
-    if (
-      !execution ||
-      actionLoading ||
-      actionLockRef.current
-    ) {
-      return;
-    }
-
-    if (pendingSteps.length > 0) {
-      setError(
-        'Approve or reject every pending human-gated step before executing the response.',
-      );
-
-      return;
-    }
-
-    if (!approvedSteps.length) {
-      setError(
-        'There are no approved steps available for execution.',
-      );
-
-      return;
-    }
-
-    if (
-      executionAttempted ||
-      executionFinished
-    ) {
-      setError(
-        'This response has already been executed. Load a new demo to create another execution.',
-      );
-
-      return;
-    }
-
-    actionLockRef.current = true;
-    setActionLoading(true);
-    setExecutionAttempted(true);
-    setError('');
-
-    const executionId =
-      execution.execution_id;
-
-    try {
-      const response =
-        await responseAutomation.execute(
-          executionId,
-        );
-
-      setExecution(response.data);
-
-      await refreshAudit(executionId);
-    } catch (requestError) {
-      /*
-       * Permit retry only when the request failed.
-       */
-      setExecutionAttempted(false);
-
-      setError(
-        extractErrorMessage(requestError),
-      );
-    } finally {
-      resetActionState();
-    }
-  };
-
-  const getExecuteButtonText = () => {
-    if (actionLoading) {
-      return 'Executing Approved Response...';
-    }
-
-    if (executionFinished) {
-      return 'Response Execution Completed';
-    }
-
-    if (executionAttempted) {
-      return 'Response Already Executed';
-    }
-
-    if (hasPendingHumanDecisions) {
-      return `Resolve ${pendingSteps.length} Human Approval${
-        pendingSteps.length === 1 ? '' : 's'
-      } First`;
-    }
-
-    if (!hasApprovedSteps) {
-      return 'No Approved Steps Available';
-    }
-
-    return 'Execute Approved Response Once';
-  };
+  const chartData = queue.slice(0, 10).map(q => ({
+    name: q.asset_name?.length > 14 ? q.asset_name.slice(0, 14) + '…' : q.asset_name,
+    score: q.priority_score,
+    fill: BAND_COLOR[q.priority_band] || '#556780',
+  }));
 
   return (
-    <div className="resilience-page">
-      <section className="resilience-header">
-        <div>
-          <div className="resilience-eyebrow">
-            Critical Infrastructure Intelligence
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+      <div className="fade-up">
+        <h2 style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-1)', letterSpacing: '-0.02em' }}>
+          Cyber Resilience Command Center
+        </h2>
+        <p style={{ fontSize: '0.9rem', color: 'var(--text-3)', marginTop: '4px' }}>
+          Detection → Prioritization → Response → Audit, in one operational view.
+        </p>
+      </div>
+
+      {loadError && (
+        <div style={{
+          padding: '12px 16px', borderRadius: '12px',
+          background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.18)',
+          color: '#f87171', fontSize: '0.84rem',
+        }}>
+          {loadError}
+        </div>
+      )}
+
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: '10px',
+        padding: '12px 16px', borderRadius: '14px',
+        background: connected ? 'rgba(34,197,94,0.08)' : 'rgba(248,113,113,0.08)',
+        border: connected ? '1px solid rgba(34,197,94,0.18)' : '1px solid rgba(248,113,113,0.18)',
+      }}>
+        <div style={{ width: 10, height: 10, borderRadius: '999px', background: connected ? '#22c55e' : '#f87171' }} />
+        <span style={{ fontSize: '0.84rem', fontWeight: 700, color: connected ? '#4ade80' : '#f87171' }}>
+          {connected ? 'Live Detection Feed Connected' : 'Feed Disconnected'}
+        </span>
+        {alerts.length > 0 && (
+          <span style={{ marginLeft: 'auto', padding: '4px 10px', borderRadius: '999px', background: 'rgba(248,113,113,0.12)', color: '#f87171', fontSize: '0.76rem', fontWeight: 700 }}>
+            {alerts.length} new alert{alerts.length > 1 ? 's' : ''}
+          </span>
+        )}
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
+        {execMetrics.map((s, i) => (
+          <div key={i} style={{
+            background: 'var(--bg-card)', border: '1px solid var(--border)',
+            borderRadius: '16px', padding: '22px 24px', borderLeft: `3px solid ${s.color}`,
+            minHeight: '110px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
+          }}>
+            <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-3)' }}>{s.label}</span>
+            <div>
+              <div style={{ fontSize: '1.7rem', fontWeight: 800, color: s.color, lineHeight: 1 }}>{s.value}</div>
+              <div style={{ fontSize: '0.7rem', color: 'var(--text-3)', marginTop: '6px' }}>{s.sub}</div>
+            </div>
           </div>
+        ))}
+      </div>
 
-          <h1>
-            Cyber Resilience Command Center
-          </h1>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px', padding: '24px' }}>
+          <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-1)', marginBottom: '14px' }}>
+            Remediation Priority Queue
+          </h3>
+          <ResponsiveContainer width="100%" height={240}>
+            <BarChart data={chartData} barSize={28}>
+              <XAxis dataKey="name" tick={{ fill: '#556780', fontSize: 10 }} tickLine={false} />
+              <YAxis domain={[0, 100]} tick={{ fill: '#556780', fontSize: 11 }} axisLine={false} tickLine={false} />
+              <Tooltip contentStyle={{ background: '#111a2d', border: '1px solid rgba(56,189,248,0.15)', borderRadius: '10px', fontSize: '0.8rem' }} />
+              <Bar dataKey="score" radius={[8, 8, 0, 0]}>
+                {chartData.map((e, i) => <Cell key={i} fill={e.fill} fillOpacity={0.9} />)}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
 
-          <p>
-            Analyse attack behaviour, predict the
-            next adversary stage, calculate blast
-            radius, prioritise containment, and
-            prepare a human-approved SOAR response.
+        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px', padding: '24px' }}>
+          <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-1)', marginBottom: '14px' }}>
+            Active Incidents
+          </h3>
+          {incidents.length === 0 && <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>No active incidents — clean.</p>}
+          {incidents.slice(0, 5).map(inc => {
+            const actions = Array.isArray(inc.actions) ? inc.actions : [];
+            const pending = actions.filter(a => a.status === 'PENDING_APPROVAL').length;
+            return (
+              <div key={inc.incident_id} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderTop: '1px solid var(--border)', fontSize: '0.84rem' }}>
+                <div>
+                  <div style={{ fontWeight: 700, color: 'var(--text-1)' }}>{inc.incident_id}</div>
+                  <div style={{ color: 'var(--text-3)', fontSize: '0.76rem' }}>{inc.detection?.target}</div>
+                </div>
+                <span style={{
+                  alignSelf: 'center', padding: '4px 12px', borderRadius: '20px', fontSize: '0.72rem', fontWeight: 700,
+                  background: pending > 0 ? 'rgba(251,146,60,0.12)' : 'rgba(52,211,153,0.12)',
+                  color: pending > 0 ? '#fb923c' : '#34d399',
+                }}>
+                  {pending > 0 ? `${pending} awaiting approval` : 'Resolved'}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px', padding: '28px' }}>
+        <div style={{ marginBottom: '18px' }}>
+          <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-1)' }}>Vulnerability Prioritisation — Explainable</h3>
+          <p style={{ fontSize: '0.84rem', color: 'var(--text-3)', marginTop: '4px' }}>
+            Every score is reasoned, not a black box. Click a row to see why.
           </p>
         </div>
 
-        <div className="resilience-safety">
-          <span className="resilience-safety-dot" />
-          Simulation-only response
-        </div>
-      </section>
+        {loading && <p style={{ color: 'var(--text-3)' }}>Loading queue...</p>}
+        {!loading && queue.length === 0 && !loadError && (
+          <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>No findings returned yet.</p>
+        )}
 
-      {error && (
-        <div className="resilience-error">
-          <strong>Request failed:</strong>{' '}
-          {error}
-        </div>
-      )}
-
-      <section className="resilience-card">
-        <div className="resilience-card-heading">
-          <div>
-            <h2>Incident analysis</h2>
-
-            <p>
-              Submit CNI telemetry to the complete
-              resilience pipeline.
-            </p>
-          </div>
-
-          <button
-            type="button"
-            className="resilience-button secondary"
-            onClick={loadDemo}
-            disabled={loading || actionLoading}
-          >
-            Load Silent Intruder Demo
-          </button>
-        </div>
-
-        <div className="resilience-form-grid">
-          <label>
-            Incident ID
-
-            <input
-              value={incidentId}
-              disabled={loading || actionLoading}
-              onChange={(event) =>
-                setIncidentId(
-                  event.target.value,
-                )
-              }
-            />
-          </label>
-
-          <label>
-            Source asset
-
-            <input
-              value={sourceNodeId}
-              disabled={loading || actionLoading}
-              onChange={(event) =>
-                setSourceNodeId(
-                  event.target.value,
-                )
-              }
-              placeholder="DEV-018"
-            />
-          </label>
-        </div>
-
-        <label className="resilience-event-label">
-          Security events
-
-          <textarea
-            value={eventText}
-            disabled={loading || actionLoading}
-            onChange={(event) =>
-              setEventText(
-                event.target.value,
-              )
-            }
-            spellCheck={false}
-          />
-        </label>
-
-        <button
-          type="button"
-          className="resilience-button primary"
-          disabled={loading || actionLoading}
-          onClick={analyseIncident}
-        >
-          {loading
-            ? 'Running resilience analysis...'
-            : 'Run End-to-End Analysis'}
-        </button>
-      </section>
-
-      {result && (
-        <>
-          <section className="resilience-metrics">
-            <article>
-              <span>Severity</span>
-
-              <strong>
-                {readable(
-                  result.decision?.severity,
-                )}
-              </strong>
-            </article>
-
-            <article>
-              <span>Observed stage</span>
-
-              <strong>
-                {result.prediction
-                  ?.current_tactic ||
-                  'Unknown'}
-              </strong>
-            </article>
-
-            <article>
-              <span>
-                Predicted next stage
-              </span>
-
-              <strong>
-                {result.prediction
-                  ?.most_likely_next_tactic ||
-                  'Unknown'}
-              </strong>
-            </article>
-
-            <article>
-              <span>
-                Prediction confidence
-              </span>
-
-              <strong>
-                {percentage(
-                  result.prediction
-                    ?.confidence,
-                )}
-              </strong>
-            </article>
-          </section>
-
-          <div className="resilience-two-column">
-            <section className="resilience-card">
-              <div className="resilience-card-heading">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          {queue.map((q, i) => (
+            <div key={i}>
+              <div
+                onClick={() => setExpanded(expanded === i ? null : i)}
+                style={{
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  padding: '16px 20px', borderRadius: '12px', cursor: 'pointer',
+                  background: 'var(--bg-surface)', border: '1px solid var(--border)',
+                }}
+              >
                 <div>
-                  <h2>
-                    Attack-stage prediction
-                  </h2>
-
-                  <p>
-                    Probable MITRE ATT&amp;CK
-                    progression.
-                  </p>
+                  <div style={{ fontWeight: 700, color: 'var(--text-1)', fontSize: '0.9rem' }}>{q.asset_name}</div>
+                  <div style={{ color: 'var(--text-3)', fontSize: '0.78rem', marginTop: '2px' }}>{q.finding}</div>
                 </div>
-              </div>
-
-              <div className="resilience-timeline">
-                {(result.prediction
-                  ?.predicted_stages || []
-                ).map((stage) => (
-                  <div
-                    className="resilience-stage"
-                    key={
-                      stage.sequence_number
-                    }
-                  >
-                    <div className="resilience-stage-number">
-                      {stage.sequence_number}
-                    </div>
-
-                    <div>
-                      <strong>
-                        {stage.tactic}
-                      </strong>
-
-                      <span>
-                        Stage probability:{' '}
-                        {percentage(
-                          stage.probability,
-                        )}
-                      </span>
-
-                      <span>
-                        Cumulative:{' '}
-                        {percentage(
-                          stage
-                            .cumulative_probability,
-                        )}
-                      </span>
-
-                      <span>
-                        Likely target:{' '}
-                        {stage
-                          .likely_target_asset_id ||
-                          'Not resolved'}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-
-            <section className="resilience-card">
-              <div className="resilience-card-heading">
-                <div>
-                  <h2>
-                    Blast-radius intelligence
-                  </h2>
-
-                  <p>
-                    Architecture-aware compromise
-                    impact.
-                  </p>
-                </div>
-              </div>
-
-              {result.blast_radius ? (
-                <div className="resilience-impact-grid">
-                  <article>
-                    <span>
-                      Reachable assets
-                    </span>
-
-                    <strong>
-                      {result.blast_radius
-                        .reachable_node_count ??
-                        0}
-                    </strong>
-                  </article>
-
-                  <article>
-                    <span>
-                      Critical assets
-                    </span>
-
-                    <strong>
-                      {result.blast_radius
-                        .critical_node_count ??
-                        0}
-                    </strong>
-                  </article>
-
-                  <article>
-                    <span>
-                      Maximum depth
-                    </span>
-
-                    <strong>
-                      {result.blast_radius
-                        .maximum_depth_reached ??
-                        'Not available'}
-                    </strong>
-                  </article>
-
-                  <article>
-                    <span>Blast score</span>
-
-                    <strong>
-                      {percentage(
-                        result.blast_radius
-                          .blast_radius_score,
-                      )}
-                    </strong>
-                  </article>
-                </div>
-              ) : (
-                <p className="resilience-muted">
-                  Blast-radius data was
-                  unavailable.
-                </p>
-              )}
-
-              <div className="resilience-target">
-                Predicted target asset
-
-                <strong>
-                  {result.prediction
-                    ?.most_likely_target_asset_id ||
-                    'Not resolved'}
-                </strong>
-              </div>
-            </section>
-          </div>
-
-          <section className="resilience-card">
-            <div className="resilience-card-heading">
-              <div>
-                <h2>
-                  Prioritised remediation
-                </h2>
-
-                <p>
-                  Ranked by blast-radius
-                  reduction and operational
-                  effectiveness.
-                </p>
-              </div>
-            </div>
-
-            <div className="resilience-table-wrap">
-              <table className="resilience-table">
-                <thead>
-                  <tr>
-                    <th>Rank</th>
-                    <th>Action</th>
-                    <th>Target</th>
-                    <th>Priority score</th>
-                    <th>Risk reduction</th>
-                  </tr>
-                </thead>
-
-                <tbody>
-                  {(result
-                    .remediation_candidates ||
-                    []
-                  )
-                    .slice(0, 5)
-                    .map(
-                      (
-                        candidate,
-                        index,
-                      ) => (
-                        <tr
-                          key={
-                            candidate
-                              .candidate_id ||
-                            `${candidate.action_type}-${index}`
-                          }
-                        >
-                          <td>
-                            {index + 1}
-                          </td>
-
-                          <td>
-                            {readable(
-                              candidate
-                                .action_type,
-                            )}
-                          </td>
-
-                          <td>
-                            {candidate
-                              .target_node_id ||
-                              candidate
-                                .target_edge_id ||
-                              'Not specified'}
-                          </td>
-
-                          <td>
-                            {Number(
-                              candidate
-                                .priority_score ||
-                                0,
-                            ).toFixed(4)}
-                          </td>
-
-                          <td>
-                            {percentage(
-                              candidate
-                                .blast_radius_reduction,
-                            )}
-                          </td>
-                        </tr>
-                      ),
-                    )}
-
-                  {!result
-                    .remediation_candidates
-                    ?.length && (
-                    <tr>
-                      <td colSpan="5">
-                        No remediation
-                        candidates returned.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </section>
-
-          <div className="resilience-two-column">
-            <section className="resilience-card">
-              <div className="resilience-card-heading">
-                <div>
-                  <h2>
-                    Recommended SOAR response
-                  </h2>
-
-                  <p>
-                    Human-gated containment
-                    preparation.
-                  </p>
-                </div>
-
-                {execution && (
-                  <span
-                    className={statusClass(
-                      execution.status,
-                    )}
-                  >
-                    {readable(
-                      execution.status,
-                    )}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-3)' }}>{q.recommended_action_window}</span>
+                  <span style={{
+                    padding: '6px 14px', borderRadius: '20px', fontSize: '0.78rem', fontWeight: 700,
+                    background: `${BAND_COLOR[q.priority_band]}18`, color: BAND_COLOR[q.priority_band],
+                  }}>
+                    {q.priority_band} · {q.priority_score}
                   </span>
-                )}
-              </div>
-
-              <div className="resilience-playbook">
-                <span>
-                  Selected playbook
-                </span>
-
-                <strong>
-                  {result.decision
-                    ?.recommended_playbook_name ||
-                    'No playbook selected'}
-                </strong>
-
-                <small>
-                  {result.decision
-                    ?.recommended_playbook_id}
-                </small>
-              </div>
-
-              {execution && (
-                <>
-                  <label className="resilience-approver">
-                    Analyst identity
-
-                    <input
-                      value={approverId}
-                      disabled={actionLoading}
-                      onChange={(event) =>
-                        setApproverId(
-                          event.target.value,
-                        )
-                      }
-                    />
-                  </label>
-
-                  {pendingSteps.length > 0 && (
-                    <div className="resilience-error">
-                      <strong>
-                        Human approval required:
-                      </strong>{' '}
-                      resolve all{' '}
-                      {pendingSteps.length}{' '}
-                      pending step
-                      {pendingSteps.length === 1
-                        ? ''
-                        : 's'}{' '}
-                      before executing the
-                      response.
-                    </div>
-                  )}
-
-                  <div className="resilience-step-list">
-                    {execution.steps.map(
-                      (step) => (
-                        <article
-                          key={
-                            step
-                              .execution_step_id
-                          }
-                        >
-                          <div>
-                            <strong>
-                              {
-                                step.step_number
-                              }
-                              .{' '}
-                              {readable(
-                                step
-                                  .action_type,
-                              )}
-                            </strong>
-
-                            <small>
-                              {
-                                step
-                                  .execution_step_id
-                              }
-                            </small>
-                          </div>
-
-                          <div className="resilience-step-actions">
-                            <span
-                              className={statusClass(
-                                step.status,
-                              )}
-                            >
-                              {readable(
-                                step.status,
-                              )}
-                            </span>
-
-                            {step.status ===
-                              'pending_approval' && (
-                              <>
-                                <button
-                                  type="button"
-                                  disabled={
-                                    actionLoading
-                                  }
-                                  className="resilience-mini-button approve"
-                                  onClick={() =>
-                                    submitDecision(
-                                      step,
-                                      true,
-                                    )
-                                  }
-                                >
-                                  Approve
-                                </button>
-
-                                <button
-                                  type="button"
-                                  disabled={
-                                    actionLoading
-                                  }
-                                  className="resilience-mini-button reject"
-                                  onClick={() =>
-                                    submitDecision(
-                                      step,
-                                      false,
-                                    )
-                                  }
-                                >
-                                  Reject
-                                </button>
-                              </>
-                            )}
-                          </div>
-                        </article>
-                      ),
-                    )}
-                  </div>
-
-                  <button
-                    type="button"
-                    className="resilience-button primary"
-                    disabled={!canExecuteResponse}
-                    onClick={executeResponse}
-                  >
-                    {getExecuteButtonText()}
-                  </button>
-
-                  <p className="resilience-muted">
-                    Approved: {approvedSteps.length}
-                    {' · '}
-                    Pending approval:{' '}
-                    {pendingSteps.length}
-                    {' · '}
-                    Completed:{' '}
-                    {completedSteps.length}
-                    {' · '}
-                    Rejected:{' '}
-                    {rejectedSteps.length}
-                  </p>
-                </>
-              )}
-            </section>
-
-            <section className="resilience-card">
-              <div className="resilience-card-heading">
-                <div>
-                  <h2>Audit integrity</h2>
-
-                  <p>
-                    SHA-256 chained evidence
-                    ledger.
-                  </p>
                 </div>
-
-                {auditVerification && (
-                  <span
-                    className={
-                      auditVerification.valid
-                        ? 'resilience-badge success'
-                        : 'resilience-badge danger'
-                    }
-                  >
-                    {auditVerification.valid
-                      ? 'Chain Valid'
-                      : 'Integrity Failed'}
-                  </span>
-                )}
               </div>
 
-              <div className="resilience-audit-list">
-                {uniqueAuditRecords.map(
-                  (record) => {
-                    const description =
-                      getAuditDescription(
-                        record,
-                      );
-
-                    return (
-                      <article
-                        key={getAuditIdentity(
-                          record,
-                        )}
-                      >
-                        <div>
-                          <strong>
-                            {readable(
-                              record.event_type,
-                            )}
-                          </strong>
-
-                          <span>
-                            {record.actor_id ||
-                              'Unknown actor'}
-                          </span>
-                        </div>
-
-                        {description && (
-                          <span>
-                            {description}
-                          </span>
-                        )}
-
-                        <small>
-                          #
-                          {record.sequence_number}
-                          {' · '}
-                          {new Date(
-                            record.timestamp,
-                          ).toLocaleString()}
-                        </small>
-                      </article>
-                    );
-                  },
-                )}
-
-                {!uniqueAuditRecords.length && (
-                  <p className="resilience-muted">
-                    Audit records will appear
-                    after response preparation.
-                  </p>
-                )}
-              </div>
-            </section>
-          </div>
-
-          <section className="resilience-card">
-            <div className="resilience-card-heading">
-              <div>
-                <h2>Pipeline evidence</h2>
-
-                <p>
-                  Completed backend
-                  intelligence stages.
-                </p>
-              </div>
-            </div>
-
-            <div className="resilience-pipeline-list">
-              {(result.pipeline_steps || []).map(
-                (step, index) => (
-                  <div
-                    key={`${index}-${step}`}
-                  >
-                    <span>{index + 1}</span>
-                    {step}
+              {expanded === i && (
+                <div style={{ padding: '16px 20px', marginTop: '2px', borderRadius: '12px', background: 'var(--bg-input)', border: '1px solid var(--border)' }}>
+                  <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', marginBottom: '10px' }}>
+                    Why priority = {q.priority_score}?
                   </div>
-                ),
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '0.84rem', color: 'var(--text-2)' }}>
+                    <div>✓ {EXPLAIN_RULES.severity[q.severity?.toLowerCase()] || q.severity}</div>
+                    <div>✓ {EXPLAIN_RULES.exposure[q.exposure?.toLowerCase()] || q.exposure}</div>
+                    <div>✓ {EXPLAIN_RULES.exploit_status[q.exploit_status?.toLowerCase()] || q.exploit_status}</div>
+                    <div>✓ Asset criticality: {q.asset_criticality}/5</div>
+                    {q.cve_id && <div>✓ Reference: {q.cve_id}</div>}
+                  </div>
+                  <div style={{ marginTop: '12px', fontSize: '0.84rem', fontWeight: 700, color: BAND_COLOR[q.priority_band] }}>
+                    Recommended: {q.recommended_action_window}
+                  </div>
+                </div>
               )}
             </div>
-          </section>
-        </>
-      )}
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
