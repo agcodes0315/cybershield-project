@@ -1,19 +1,181 @@
-import axios from 'axios';
+import axios from "axios";
+
+const DEFAULT_API_BASE_URL =
+  "https://cybershield-api-gateway.niceforest-87cbfff3.centralindia.azurecontainerapps.io/api";
+
+function normalizeBaseUrl(value) {
+  const url = String(value || DEFAULT_API_BASE_URL).trim();
+  return url.replace(/\/+$/, "");
+}
+
+/*
+ * Use one consistent localStorage key throughout the application.
+ */
+const TOKEN_STORAGE_KEY = "cybershield_token";
+const USER_STORAGE_KEY = "cybershield_user";
+
+export function saveAuthSession(token, user = null) {
+  if (!token) {
+    throw new Error("Cannot save authentication session without a token.");
+  }
+
+  const cleanToken = String(token)
+    .replace(/^Bearer\s+/i, "")
+    .trim();
+
+  localStorage.setItem(TOKEN_STORAGE_KEY, cleanToken);
+
+  if (user) {
+    localStorage.setItem(
+      USER_STORAGE_KEY,
+      JSON.stringify(user),
+    );
+  }
+}
+
+export function clearAuthSession() {
+  localStorage.removeItem(TOKEN_STORAGE_KEY);
+  localStorage.removeItem(USER_STORAGE_KEY);
+
+  /*
+   * Remove old token keys that may contain stale or invalid tokens.
+   */
+  const legacyKeys = [
+    "token",
+    "accessToken",
+    "access_token",
+    "jwt",
+    "authToken",
+    "auth",
+    "user",
+    "cybershield-auth",
+    "cybershieldAuth",
+  ];
+
+  legacyKeys.forEach((key) => {
+    localStorage.removeItem(key);
+  });
+}
+
+export function getStoredToken() {
+  const primaryToken =
+    localStorage.getItem(TOKEN_STORAGE_KEY);
+
+  if (
+    primaryToken &&
+    primaryToken !== "null" &&
+    primaryToken !== "undefined"
+  ) {
+    return primaryToken
+      .replace(/^Bearer\s+/i, "")
+      .trim();
+  }
+
+  /*
+   * Temporary compatibility with older frontend versions.
+   */
+  const directKeys = [
+    "token",
+    "accessToken",
+    "access_token",
+    "jwt",
+    "authToken",
+  ];
+
+  for (const key of directKeys) {
+    const value = localStorage.getItem(key);
+
+    if (
+      value &&
+      value !== "null" &&
+      value !== "undefined"
+    ) {
+      return value
+        .replace(/^Bearer\s+/i, "")
+        .trim();
+    }
+  }
+
+  const objectKeys = [
+    "auth",
+    "user",
+    "cybershield-auth",
+    "cybershieldAuth",
+  ];
+
+  for (const key of objectKeys) {
+    const rawValue = localStorage.getItem(key);
+
+    if (!rawValue) {
+      continue;
+    }
+
+    try {
+      const parsed = JSON.parse(rawValue);
+
+      const token =
+        parsed?.token ||
+        parsed?.accessToken ||
+        parsed?.access_token ||
+        parsed?.jwt ||
+        parsed?.authToken ||
+        parsed?.data?.token ||
+        parsed?.data?.accessToken ||
+        parsed?.data?.access_token ||
+        parsed?.user?.token;
+
+      if (token) {
+        return String(token)
+          .replace(/^Bearer\s+/i, "")
+          .trim();
+      }
+    } catch {
+      /*
+       * Ignore non-JSON localStorage values.
+       */
+    }
+  }
+
+  return null;
+}
+
+export function getStoredUser() {
+  const rawUser =
+    localStorage.getItem(USER_STORAGE_KEY);
+
+  if (!rawUser) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(rawUser);
+  } catch {
+    return null;
+  }
+}
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
+  baseURL: normalizeBaseUrl(
+    import.meta.env.VITE_API_BASE_URL,
+  ),
   timeout: 30000,
   headers: {
-    'Content-Type': 'application/json',
+    Accept: "application/json",
+    "Content-Type": "application/json",
   },
 });
 
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
+    const token = getStoredToken();
+
+    config.headers = config.headers || {};
 
     if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+      config.headers.Authorization =
+        `Bearer ${token}`;
+    } else {
+      delete config.headers.Authorization;
     }
 
     return config;
@@ -23,49 +185,84 @@ api.interceptors.request.use(
 
 api.interceptors.response.use(
   (response) => response,
-  (error) => Promise.reject(error),
+  (error) => {
+    const status = error?.response?.status;
+
+    console.error("[CyberShield API Error]", {
+      method: error?.config?.method,
+      url: error?.config?.url,
+      baseURL: error?.config?.baseURL,
+      status,
+      tokenFound: Boolean(getStoredToken()),
+      response: error?.response?.data,
+      message: error?.message,
+    });
+
+    /*
+     * Do not automatically remove the token for login failures.
+     * Remove it only when a protected request rejects an existing token.
+     */
+    const isLoginRequest =
+      error?.config?.url?.includes("/auth/login");
+
+    if (
+      status === 401 &&
+      !isLoginRequest &&
+      getStoredToken()
+    ) {
+      clearAuthSession();
+
+      window.dispatchEvent(
+        new CustomEvent(
+          "cybershield:unauthorized",
+        ),
+      );
+    }
+
+    return Promise.reject(error);
+  },
 );
 
 export const auth = {
   register: (data) =>
-    api.post('/auth/register', data),
+    api.post("/auth/register", data),
 
   login: (data) =>
-    api.post('/auth/login', data),
+    api.post("/auth/login", data),
 
   me: () =>
-    api.get('/auth/me'),
+    api.get("/auth/me"),
 };
 
 export const scan = {
   url: (url) =>
-    api.post('/scan/url', { url }),
+    api.post("/scan/url", { url }),
 
   history: () =>
-    api.get('/scan/history'),
+    api.get("/scan/history"),
 };
 
 export const email = {
   analyze: (rawHeaders) =>
-    api.post('/email/analyze', {
+    api.post("/email/analyze", {
       raw_headers: rawHeaders,
     }),
 };
 
 export const threats = {
   recent: () =>
-    api.get('/threats/recent'),
+    api.get("/threats/recent"),
 
   fetchFeeds: () =>
-    api.post('/threats/fetch'),
+    api.post("/threats/fetch"),
 };
 
 export const community = {
   getReports: () =>
-    api.get('/community/reports'),
+    api.get("/community/reports"),
 
   submitReport: (data) =>
-    api.post('/community/report', data),
+    api.post("/community/report", data),
 
   vote: (id, type) =>
     api.post(
@@ -77,10 +274,10 @@ export const community = {
 export const reports = {
   generate: async (scanData) => {
     const response = await api.post(
-      '/reports/generate',
+      "/reports/generate",
       scanData,
       {
-        responseType: 'blob',
+        responseType: "blob",
         timeout: 60000,
       },
     );
@@ -88,17 +285,17 @@ export const reports = {
     const blob = new Blob(
       [response.data],
       {
-        type: 'application/pdf',
+        type: "application/pdf",
       },
     );
 
-    const url =
+    const objectUrl =
       window.URL.createObjectURL(blob);
 
     const link =
-      document.createElement('a');
+      document.createElement("a");
 
-    link.href = url;
+    link.href = objectUrl;
     link.download =
       `cybershield_report_${Date.now()}.pdf`;
 
@@ -106,28 +303,30 @@ export const reports = {
     link.click();
     document.body.removeChild(link);
 
-    window.URL.revokeObjectURL(url);
+    window.URL.revokeObjectURL(
+      objectUrl,
+    );
   },
 };
 
 export const recon = {
   portScan: (domain) =>
     api.post(
-      '/recon/port-scan',
+      "/recon/port-scan",
       { domain },
       { timeout: 60000 },
     ),
 
   abuseCheck: (domain) =>
     api.post(
-      '/recon/abuse-check',
+      "/recon/abuse-check",
       { domain },
       { timeout: 45000 },
     ),
 
   full: (domain) =>
     api.post(
-      '/recon/full',
+      "/recon/full",
       { domain },
       { timeout: 90000 },
     ),
@@ -135,20 +334,20 @@ export const recon = {
 
 export const gophish = {
   getCampaigns: () =>
-    api.get('/gophish/campaigns'),
+    api.get("/gophish/campaigns"),
 
   getCampaign: (id) =>
     api.get(`/gophish/campaigns/${id}`),
 
   getPages: () =>
-    api.get('/gophish/pages'),
+    api.get("/gophish/pages"),
 
   getTemplates: () =>
-    api.get('/gophish/templates'),
+    api.get("/gophish/templates"),
 
   analyzeUrl: (url) =>
     api.post(
-      '/gophish/analyze-url',
+      "/gophish/analyze-url",
       { url },
       { timeout: 60000 },
     ),
@@ -157,27 +356,29 @@ export const gophish = {
 export const yaraScan = {
   scan: (url) =>
     api.post(
-      '/yara/scan',
+      "/yara/scan",
       { url },
       { timeout: 60000 },
     ),
 
   getRules: () =>
-    api.get('/yara/rules'),
+    api.get("/yara/rules"),
 };
 
 export const breach = {
   checkPassword: (password) =>
     api.post(
-      '/breach/check-password',
+      "/breach/check-password",
       { password },
       { timeout: 45000 },
     ),
 
   checkEmail: (emailAddress) =>
     api.post(
-      '/breach/check-email',
-      { email: emailAddress },
+      "/breach/check-email",
+      {
+        email: emailAddress,
+      },
       { timeout: 45000 },
     ),
 };
@@ -185,35 +386,29 @@ export const breach = {
 export const vuln = {
   fullScan: (target) =>
     api.post(
-      '/vuln/full',
+      "/vuln/full",
       { target },
-      {
-        timeout: 90000,
-      },
+      { timeout: 90000 },
     ),
 
   niktoScan: (target) =>
     api.post(
-      '/vuln/nikto',
+      "/vuln/nikto",
       { target },
-      {
-        timeout: 120000,
-      },
+      { timeout: 120000 },
     ),
 
   networkCapture: (target) =>
     api.post(
-      '/vuln/capture',
+      "/vuln/capture",
       { target },
-      {
-        timeout: 60000,
-      },
+      { timeout: 60000 },
     ),
 };
 
 export const admin = {
   getUsers: () =>
-    api.get('/admin/users'),
+    api.get("/admin/users"),
 
   updateRole: (id, role) =>
     api.put(
@@ -225,67 +420,97 @@ export const admin = {
     api.delete(`/admin/users/${id}`),
 
   getCommunityReports: () =>
-    api.get('/admin/community-reports'),
+    api.get(
+      "/admin/community-reports",
+    ),
 
-  updateReportStatus: (id, status) =>
+  updateReportStatus: (
+    id,
+    status,
+  ) =>
     api.put(
       `/admin/community-reports/${id}/status`,
       { status },
     ),
 
   getStats: () =>
-    api.get('/admin/stats'),
+    api.get("/admin/stats"),
 };
 
 export const settings = {
   getProfile: () =>
-    api.get('/settings/profile'),
+    api.get("/settings/profile"),
 
   updateProfile: (data) =>
-    api.put('/settings/profile', data),
+    api.put(
+      "/settings/profile",
+      data,
+    ),
 
   changePassword: (data) =>
-    api.put('/settings/password', data),
+    api.put(
+      "/settings/password",
+      data,
+    ),
 };
+
 export const orchestrator = {
   list: () =>
-    api.get('/orchestrator/incidents'),
+    api.get(
+      "/orchestrator/incidents",
+    ),
 
   get: (incidentId) =>
-    api.get(`/orchestrator/incidents/${incidentId}`),
+    api.get(
+      `/orchestrator/incidents/${incidentId}`,
+    ),
 
   create: (detection) =>
-    api.post('/orchestrator/incidents', detection),
+    api.post(
+      "/orchestrator/incidents",
+      detection,
+    ),
 
-  decide: (incidentId, decision) =>
+  decide: (
+    incidentId,
+    decision,
+  ) =>
     api.post(
       `/orchestrator/incidents/${incidentId}/decide`,
-      decision
+      decision,
     ),
 
   autoExecute: (incidentId) =>
     api.post(
-      `/orchestrator/incidents/${incidentId}/auto-execute`
+      `/orchestrator/incidents/${incidentId}/auto-execute`,
     ),
 };
 
 export const vulnPriority = {
   demo: () =>
-    api.get('/vuln-priority/demo'),
+    api.get(
+      "/vuln-priority/demo",
+    ),
 
   rank: (findings) =>
-    api.post('/vuln-priority/rank', findings),
+    api.post(
+      "/vuln-priority/rank",
+      findings,
+    ),
 };
 
 export const audit = {
   trail: (incidentId) =>
-    api.get('/audit/trail', {
+    api.get("/audit/trail", {
       params: incidentId
-        ? { incident_id: incidentId }
+        ? {
+            incident_id: incidentId,
+          }
         : {},
     }),
 
   verify: () =>
-    api.get('/audit/verify'),
+    api.get("/audit/verify"),
 };
+
 export default api;
