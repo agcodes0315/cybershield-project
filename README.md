@@ -9,9 +9,9 @@
 ![Redis](https://img.shields.io/badge/Redis-DC382D?style=flat&logo=redis&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-green.svg)
 
-CyberShield is a production-inspired, AI-powered Security Operations Center (SOC) platform built to improve cyber resilience across Critical National Infrastructure (CNI) — government, defence, healthcare, finance, transportation, and energy. It unifies threat intelligence, phishing detection, vulnerability prioritization, response orchestration, and MITRE ATT&CK mapping into a single operational dashboard.
+CyberShield is a production-inspired, AI-powered Security Operations Center (SOC) platform built to improve cyber resilience across Critical National Infrastructure (CNI) government, defence, healthcare, finance, transportation, and energy. It unifies threat intelligence, phishing detection, vulnerability prioritization, response orchestration, and MITRE ATT&CK mapping into a single operational dashboard.
 
-Built as a modular, cloud-ready platform, CyberShield demonstrates how modern SOCs use AI, automation, and security analytics to cut incident response time and improve operational visibility — while remaining approachable enough for learning, demonstration, and portfolio use.
+Built as a modular, cloud-ready platform, CyberShield demonstrates how modern SOCs use AI, automation and security analytics to cut incident response time and improve operational visibility while remaining approachable enough for learning, demonstration and portfolio use.
 
 ---
 
@@ -49,9 +49,9 @@ Built as a modular, cloud-ready platform, CyberShield demonstrates how modern SO
 
 ## 🌍 Overview
 
-Modern organizations rely on multiple disconnected security tools for phishing detection, vulnerability assessment, malware analysis, email investigation, and incident response. This fragmented approach leads to alert fatigue, slow investigations, high Mean Time to Detect (MTTD), high Mean Time to Respond (MTTR), and manual security operations.
+Modern organizations rely on multiple disconnected security tools for phishing detection, vulnerability assessment, malware analysis, email investigation, and incident response. This fragmented approach leads to alert fatigue, slow investigations, high Mean Time to Detect (MTTD), high Mean Time to Respond (MTTR) and manual security operations.
 
-CyberShield unifies these capabilities into a centralized Security Operations Center powered by AI and cloud-native architecture — resembling enterprise products like Microsoft Sentinel, Splunk Enterprise, and CrowdStrike Falcon, purpose-built to be understandable, extensible, and demo-ready.
+CyberShield unifies these capabilities into a centralized Security Operations Center powered by AI and cloud-native architecture, resembling enterprise products like Microsoft Sentinel, Splunk Enterprise and CrowdStrike Falcon, purpose-built to be understandable, extensible and demo-ready.
 
 ## Project Highlights
 
@@ -73,25 +73,25 @@ CyberShield unifies these capabilities into a centralized Security Operations Ce
 
 ## 🎯 Problem Statement
 
-Critical National Infrastructure (CNI) sectors face increasingly sophisticated cyber attacks, yet traditional security stacks rely on isolated products and signature-based detection.
+Critical National Infrastructure (CNI) sectors face increasingly sophisticated cyber attacks, yet traditional security stacks rely on isolated products and signature based detection.
 
-CyberShield addresses this through AI-assisted threat intelligence, behaviour-driven security analytics, automated response orchestration, vulnerability prioritization, cyber resilience assessment, and cloud-native SOC architecture.
+CyberShield addresses this through AI-assisted threat intelligence, behaviour driven security analytics, automated response orchestration, vulnerability prioritization, cyber resilience assessment and cloud native SOC architecture.
 
 ## ✨ Key Features
 
-**Security Operations** — SOC Command Center Dashboard, Real-time Security Monitoring, Threat Feed Dashboard, Analyst Workspace
+**Security Operations** : SOC Command Center Dashboard, Real-time Security Monitoring, Threat Feed Dashboard, Analyst Workspace
 
-**Threat Intelligence** — AI URL Scanner, Email Header Analyzer, SPF/DKIM/DMARC Validation, Reconnaissance Engine, IP Reputation Analysis
+**Threat Intelligence** : AI URL Scanner, Email Header Analyzer, SPF/DKIM/DMARC Validation, Reconnaissance Engine, IP Reputation Analysis
 
-**Vulnerability Management** — Vulnerability Prioritization, Context-aware Risk Scoring, Patch Prioritization, Asset Criticality Ranking
+**Vulnerability Management** : Vulnerability Prioritization, Context-aware Risk Scoring, Patch Prioritization, Asset Criticality Ranking
 
-**Malware Detection** — YARA Rule Engine, Malware Signature Analysis, IOC Detection
+**Malware Detection** : YARA Rule Engine, Malware Signature Analysis, IOC Detection
 
-**Incident Response** — Human Approval Workflow, Response Orchestrator, Automated Playbooks, Audit Trail, Response Execution History
+**Incident Response** : Human Approval Workflow, Response Orchestrator, Automated Playbooks, Audit Trail, Response Execution History
 
-**Cyber Resilience** — End-to-End Resilience Analysis, Security Event Correlation, Organizational Risk Assessment
+**Cyber Resilience** : End-to-End Resilience Analysis, Security Event Correlation, Organizational Risk Assessment
 
-**Collaboration** — Community Threat Intelligence, Shared Security Reports, Analyst Collaboration
+**Collaboration** : Community Threat Intelligence, Shared Security Reports, Analyst Collaboration
 
 ---
 
@@ -133,7 +133,7 @@ flowchart TD
 
 **Service boundaries:** the React dashboard never talks to the detection engine directly — every request passes through the Express API gateway, which owns authentication and routing. Redis sits between the gateway and the FastAPI detection engine as both a response cache (for repeat URL/domain lookups) and a work queue (for longer-running scans like YARA and reconnaissance), so the gateway doesn't block on synchronous detection calls.
 
-**SOAR orchestrator placement:** low-risk findings (e.g., a URL scoring below the auto-remediation threshold) flow straight into the automated playbook path. Medium/high-risk findings are routed to the human approval gate before any playbook executes — the orchestrator never auto-executes anything above the configured risk threshold.
+**SOAR orchestrator placement:** low-risk findings (e.g., a URL scoring below the auto-remediation threshold) flow straight into the automated playbook path. Medium/high-risk findings are routed to the human approval gate before any playbook executes, the orchestrator never auto-executes anything above the configured risk threshold.
 
 **Real-time fan-out:** the Express gateway maintains a WebSocket connection per active analyst session. New incidents, playbook completions, and approval requests are pushed to all connected clients rather than polled, so the SOC dashboard reflects new findings within the same detection cycle.
 
@@ -150,7 +150,7 @@ flowchart TD
 | `users` | `id`, `email`, `password_hash`, `role_id` | Standard credential store, BCrypt-hashed |
 | `roles` | `id`, `name`, `permission_bitmask` | See RBAC table below |
 
-The hash-chained `audit_log` is what makes "immutable audit logging" a verifiable claim rather than a description — any row modified out-of-band fails the chain-verification check on next read.
+The hash-chained `audit_log` is what makes "immutable audit logging" a verifiable claim rather than a description, any row modified out-of-band fails the chain-verification check on next read.
 
 ### Incident state machine
 
@@ -162,7 +162,7 @@ detected → triaged → playbook_run → human_approved → closed
                      incident returns to triaged with a note)
 ```
 
-Each transition is a row in `audit_log`, not just a status update — so the full lifecycle of every incident is reconstructable from the log alone, independent of the current `incidents.status` value.
+Each transition is a row in `audit_log`, not just a status update, so the full lifecycle of every incident is reconstructable from the log alone, independent of the current `incidents.status` value.
 
 ### RBAC permission model
 
@@ -172,7 +172,7 @@ Each transition is a row in `audit_log`, not just a status update — so the ful
 | Senior Analyst | ✅ | ✅ (low-risk only) | ✅ | ❌ |
 | SOC Lead | ✅ | ✅ | ✅ | ✅ |
 
-Permissions are stored as a bitmask on `roles` and checked at the API gateway layer before a request reaches the FastAPI detection engine — so an unauthorized action is rejected before it consumes any detection-engine compute.
+Permissions are stored as a bitmask on `roles` and checked at the API gateway layer before a request reaches the FastAPI detection engine, so an unauthorized action is rejected before it consumes any detection-engine compute.
 
 ### Rate limiting
 
@@ -181,7 +181,7 @@ Permissions are stored as a bitmask on `roles` and checked at the API gateway la
 | `/scan/url` | 30 req/min per analyst | Prevents accidental scan storms against a single suspicious domain |
 | `/scan/email` | 20 req/min per analyst | Email parsing is more compute-heavy than URL scoring |
 | `/orchestrator/execute` | 5 req/min per analyst | Playbook execution is the highest-consequence action in the system |
-| `/auth/*` | 10 req/min per IP | Standard brute-force mitigation |
+| `/auth/*` | 10 req/min per IP | Standard brute force mitigation |
 
 ---
 
@@ -193,7 +193,7 @@ Permissions are stored as a bitmask on `roles` and checked at the API gateway la
 | **API Gateway** | Node.js, Express, JWT Auth, Helmet, CORS, Rate Limiting, Morgan, WebSockets |
 | **Detection Engine** | Python, FastAPI, scikit-learn (Random Forest + Gradient Boosting), YARA, Nmap, WHOIS |
 | **Data Layer** | PostgreSQL, Redis |
-| **Cloud** | Microsoft Azure — Static Web Apps, Container Apps, Docker |
+| **Cloud** | Microsoft Azure- Static Web Apps, Container Apps, Docker |
 
 ## 📂 Implemented Modules
 
@@ -326,7 +326,7 @@ GET  /api/resilience/audit/verify
 ```
 </details>
 
-FastAPI also auto-generates interactive docs at `/docs`, covering URL Analysis, Email Analysis, Reconnaissance, Vulnerability Prioritization, Response Orchestration, Audit, and Cyber Resilience.
+FastAPI also auto-generates interactive docs at `/docs`, covering URL Analysis, Email Analysis, Reconnaissance, Vulnerability Prioritization, Response Orchestration, Audit and Cyber Resilience.
 
 ---
 
@@ -441,7 +441,7 @@ Also verify HTTPS, WSS WebSocket connectivity, CORS, authentication, database co
 
 ## ⚠️ Known Limitations
 
-- MITRE mapping currently uses keyword-based classification, not a full ATT&CK Navigator integration
+- MITRE mapping currently uses keyword-based classification, not a full ATTACK Navigator integration
 - Threat-feed diversity depends on configured provider API keys
 - Some external integrations require paid or rate-limited API keys
 - Network scanning may be restricted in managed cloud environments
@@ -451,16 +451,16 @@ Also verify HTTPS, WSS WebSocket connectivity, CORS, authentication, database co
 
 ## 🗺 Roadmap (planned — not yet implemented)
 
-The items below are design targets, not shipped features. Each has a short blueprint so the design thinking is visible even before the code lands — none of this is represented as built.
+The items below are design targets, not shipped features. Each has a short blueprint so the design thinking is visible even before the code lands, none of this is represented as built.
 
 | Enhancement | Design direction |
 |---|---|
-| **MITRE ATT&CK Navigator-style Heatmap** | The existing keyword-based mapping already surfaces coverage, technique, and tactic counts — this extends it into an interactive Navigator-style heatmap on the incident detail view, so an analyst sees *which stage of an attack chain* a finding belongs to at a glance, not just a raw score |
+| **MITRE ATT&CK Navigator-style Heatmap** | The existing keyword-based mapping already surfaces coverage, technique, and tactic counts, this extends it into an interactive Navigator-style heatmap on the incident detail view, so an analyst sees *which stage of an attack chain* a finding belongs to at a glance, not just a raw score |
 | **Behavioural Analytics Dashboard** | Baseline per-asset normal behaviour over a rolling window; flag deviations as anomaly scores feeding the existing risk-scoring pipeline |
 | **SIEM Integration** | Expose a normalized event stream (CEF/JSON over Syslog) from the `audit_log` table so CyberShield can sit alongside Splunk/Sentinel as a source |
 | **Threat Actor Attribution** | Correlate IOC patterns against open threat-intel feeds to suggest — not assert — likely actor clusters, as a confidence-scored hint |
 | **Kubernetes Deployment** | Migrate the detection engine and gateway to AKS with autoscaling keyed on Redis queue depth |
-| **Graph-based Attack Path Analysis** | Model assets and trust relationships as a graph; compute shortest attack paths to prioritize which vulnerability matters most |
+| **Graph-based Attack Path Analysis** | Model assets and trust relationships as a graph, compute shortest attack paths to prioritize which vulnerability matters most |
 | **AI Security Copilot** | LLM-backed assistant scoped to read-only queries against the incident/audit schema, restricted to the same RBAC model as human analysts |
 | **Real-time Streaming Analytics** | Replace Redis-as-queue with Kafka/Azure Event Hubs once incident volume exceeds single-instance buffering |
 
@@ -477,4 +477,4 @@ CyberShield is intended for educational, authorised defensive-security, and port
 
 ---
 
-⭐ **If you found this project interesting, consider giving it a star — it genuinely helps!**
+⭐ **If you found this project interesting, consider giving it a star**
