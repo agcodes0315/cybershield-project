@@ -8,7 +8,7 @@ import importlib
 import os
 from typing import Any
 
-from fastapi import FastAPI
+from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 
@@ -23,6 +23,8 @@ app = FastAPI(
 
 
 def get_allowed_origins() -> list[str]:
+    """Return local and configured frontend origins."""
+
     default_origins = [
         "http://localhost:5173",
         "http://127.0.0.1:5173",
@@ -65,6 +67,11 @@ app.add_middleware(
 )
 
 
+# Each tuple contains:
+# module path, fallback prefix, OpenAPI tags.
+#
+# The fallback prefix is used only when the APIRouter itself
+# does not already define a prefix.
 ROUTERS: list[tuple[str, str, list[str]]] = [
     ("app.api.scan", "/api/scan", ["URL Scanner"]),
     (
@@ -134,8 +141,8 @@ ROUTERS: list[tuple[str, str, list[str]]] = [
     ),
     (
         "app.api.pipeline",
-        "/api/pipeline",
-        ["Event Pipeline"],
+        "/api/resilience",
+        ["Cyber Resilience Pipeline"],
     ),
     (
         "app.api.prediction",
@@ -170,31 +177,65 @@ ROUTERS: list[tuple[str, str, list[str]]] = [
 ]
 
 
-loaded_routers: list[str] = []
+loaded_routers: list[dict[str, str]] = []
 failed_routers: dict[str, str] = {}
 
 
 def register_router(
     module_name: str,
-    prefix: str,
+    fallback_prefix: str,
     tags: list[str],
 ) -> None:
+    """
+    Import and register an API router.
+
+    Some CyberShield routers already declare their full prefix,
+    such as /api/correlation. Other routers declare no prefix and
+    depend on main.py to provide one.
+
+    This function supports both cases and prevents duplicated paths
+    such as /api/correlation/api/correlation.
+    """
+
     try:
         module: Any = importlib.import_module(module_name)
-        router = getattr(module, "router", None)
+        router: APIRouter | None = getattr(
+            module,
+            "router",
+            None,
+        )
 
         if router is None:
             raise AttributeError(
                 f"{module_name} does not export a router."
             )
 
+        router_prefix = getattr(
+            router,
+            "prefix",
+            "",
+        ).strip()
+
+        effective_prefix = (
+            ""
+            if router_prefix
+            else fallback_prefix
+        )
+
         app.include_router(
             router,
-            prefix=prefix,
+            prefix=effective_prefix,
             tags=tags,
         )
 
-        loaded_routers.append(prefix)
+        loaded_routers.append(
+            {
+                "module": module_name,
+                "router_prefix": (
+                    router_prefix or fallback_prefix
+                ),
+            }
+        )
 
     except Exception as exc:
         failed_routers[module_name] = (
@@ -208,16 +249,18 @@ def register_router(
         )
 
 
-for module_name, prefix, tags in ROUTERS:
+for module_name, fallback_prefix, tags in ROUTERS:
     register_router(
         module_name,
-        prefix,
+        fallback_prefix,
         tags,
     )
 
 
 @app.get("/", tags=["System"])
 async def root() -> dict[str, Any]:
+    """Return detection-engine service information."""
+
     return {
         "service": "CyberShield Detection Engine",
         "status": "running",
@@ -229,8 +272,14 @@ async def root() -> dict[str, Any]:
 @app.get("/health", tags=["System"])
 @app.get("/api/health", tags=["System"])
 async def health() -> dict[str, Any]:
+    """Return router and service health information."""
+
     return {
-        "status": "healthy",
+        "status": (
+            "healthy"
+            if not failed_routers
+            else "degraded"
+        ),
         "service": "detection-engine",
         "loaded_router_count": len(loaded_routers),
         "loaded_routers": loaded_routers,

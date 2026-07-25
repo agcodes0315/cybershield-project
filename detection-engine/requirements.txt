@@ -8,3 +8,5 @@ pydantic==2.5.0
 python-dotenv==1.0.0
 email-validator
 yara-python==4.5.1
+httpx==0.24.1
+pytest>=8.0
