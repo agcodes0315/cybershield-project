@@ -21,11 +21,14 @@ import EmailAnalyzer from './pages/EmailAnalyzer';
 import GoPhish from './pages/GoPhish';
 import Landing from './pages/Landing';
 import Login from './pages/Login';
+import MitreAttack from './pages/MitreAttack';
 import PenTest from './pages/PenTest';
 import Recon from './pages/Recon';
 import Register from './pages/Register';
 import Resilience from './pages/Resilience';
+import ResponseOrchestrator from './pages/ResponseOrchestrator';
 import Settings from './pages/Settings';
+import ThreatIntelligence from './pages/ThreatIntelligence';
 import YaraScan from './pages/YaraScan';
 
 function PublicRoute({ children }) {
@@ -36,7 +39,59 @@ function PublicRoute({ children }) {
   }
 
   if (user) {
-    return <Navigate to="/dashboard" replace />;
+    return (
+      <Navigate
+        to="/dashboard"
+        replace
+      />
+    );
+  }
+
+  return children;
+}
+
+function ProtectedRoute({ children }) {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return <LoadingScreen />;
+  }
+
+  if (!user) {
+    return (
+      <Navigate
+        to="/login"
+        replace
+      />
+    );
+  }
+
+  return children;
+}
+
+function AdminRoute({ children }) {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return <LoadingScreen />;
+  }
+
+  if (!user) {
+    return (
+      <Navigate
+        to="/login"
+        replace
+      />
+    );
+  }
+
+  if (user.role !== 'admin') {
+    return (
+      <Navigate
+        to="/dashboard"
+        replace
+      />
+    );
   }
 
   return children;
@@ -50,10 +105,23 @@ function HomeRoute() {
   }
 
   if (user) {
-    return <Navigate to="/dashboard" replace />;
+    return (
+      <Navigate
+        to="/dashboard"
+        replace
+      />
+    );
   }
 
   return <Landing />;
+}
+
+function ProtectedLayout() {
+  return (
+    <ProtectedRoute>
+      <MainLayout />
+    </ProtectedRoute>
+  );
 }
 
 function AppRoutes() {
@@ -82,7 +150,7 @@ function AppRoutes() {
         }
       />
 
-      <Route element={<MainLayout />}>
+      <Route element={<ProtectedLayout />}>
         <Route
           path="/dashboard"
           element={<Dashboard />}
@@ -91,6 +159,11 @@ function AppRoutes() {
         <Route
           path="/resilience"
           element={<Resilience />}
+        />
+
+        <Route
+          path="/response-orchestrator"
+          element={<ResponseOrchestrator />}
         />
 
         <Route
@@ -104,18 +177,13 @@ function AppRoutes() {
         />
 
         <Route
-          path="/pentest"
-          element={<PenTest />}
+          path="/threat-intelligence"
+          element={<ThreatIntelligence />}
         />
 
         <Route
-          path="/gophish"
-          element={<GoPhish />}
-        />
-
-        <Route
-          path="/yara"
-          element={<YaraScan />}
+          path="/mitre"
+          element={<MitreAttack />}
         />
 
         <Route
@@ -124,24 +192,48 @@ function AppRoutes() {
         />
 
         <Route
-          path="/community"
-          element={<Community />}
+          path="/pentest"
+          element={<PenTest />}
         />
 
         <Route
-          path="/admin"
-          element={<Admin />}
+          path="/yara"
+          element={<YaraScan />}
+        />
+
+        <Route
+          path="/gophish"
+          element={<GoPhish />}
+        />
+
+        <Route
+          path="/community"
+          element={<Community />}
         />
 
         <Route
           path="/settings"
           element={<Settings />}
         />
+
+        <Route
+          path="/admin"
+          element={
+            <AdminRoute>
+              <Admin />
+            </AdminRoute>
+          }
+        />
       </Route>
 
       <Route
         path="*"
-        element={<Navigate to="/" replace />}
+        element={
+          <Navigate
+            to="/"
+            replace
+          />
+        }
       />
     </Routes>
   );

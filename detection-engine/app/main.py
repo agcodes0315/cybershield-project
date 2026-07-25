@@ -1,359 +1,239 @@
+﻿"""
+CyberShield Detection Engine entry point.
+"""
+
 from __future__ import annotations
 
+import importlib
 import os
-import sys
-from contextlib import asynccontextmanager
-from pathlib import Path
-from typing import Any, AsyncIterator
+from typing import Any
 
-from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 
-# ---------------------------------------------------------------------------
-# Import-path configuration
-#
-# app/main.py is located at:
-#   project-root/detection-engine/app/main.py
-#
-# Some existing CyberShield modules import sibling services using:
-#   from services....
-#
-# Therefore, both the detection-engine directory and the project root must be
-# available on sys.path before those modules are imported.
-# ---------------------------------------------------------------------------
-
-APP_DIRECTORY = Path(__file__).resolve().parent
-DETECTION_ENGINE_DIRECTORY = APP_DIRECTORY.parent
-PROJECT_ROOT_DIRECTORY = DETECTION_ENGINE_DIRECTORY.parent
-
-for directory in (
-    DETECTION_ENGINE_DIRECTORY,
-    PROJECT_ROOT_DIRECTORY,
-):
-    directory_string = str(directory)
-
-    if directory_string not in sys.path:
-        sys.path.insert(0, directory_string)
-
-
-from app.api.attack_graph import router as attack_graph_router
-from app.api.audit_log import router as audit_log_router
-from app.api.breach import router as breach_router
-from app.api.correlation import router as correlation_router
-from app.api.email_analysis import router as email_router
-from app.api.gophish import router as gophish_router
-from app.api.pipeline import router as pipeline_router
-from app.api.prediction import router as prediction_router
-from app.api.recon import router as recon_router
-from app.api.reports import router as reports_router
-from app.api.response import router as response_router
-from app.api.response_orchestrator import (
-    router as response_orchestrator_router,
+app = FastAPI(
+    title="CyberShield Detection Engine",
+    description=(
+        "FastAPI detection, analysis, correlation and "
+        "incident-response service for CyberShield."
+    ),
+    version="1.0.0",
 )
-from app.api.scan import router as scan_router
-from app.api.threats import router as threats_router
-from app.api.ueba import router as ueba_router
-from app.api.vuln_scan import router as vuln_router
-from app.api.vulnerability_priority import (
-    router as vulnerability_priority_router,
-)
-from app.api.yara_scan import router as yara_router
-
-
-load_dotenv()
-
-
-SERVICE_NAME = "cybershield-detection-engine"
-SERVICE_DISPLAY_NAME = "CyberShield CNI Detection Engine"
-SERVICE_VERSION = "4.1.1"
 
 
 def get_allowed_origins() -> list[str]:
+    default_origins = [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "https://mango-pebble-099d8de00.7.azurestaticapps.net",
+    ]
+
     configured_origins = os.getenv(
         "CORS_ORIGINS",
-        (
-            "http://localhost:5173,"
-            "http://127.0.0.1:5173,"
-            "https://mango-pebble-099d8de00.7.azurestaticapps.net"
-        ),
-    )
+        "",
+    ).strip()
 
-    return [
-        origin.strip()
+    if not configured_origins:
+        return default_origins
+
+    additional_origins = [
+        origin.strip().rstrip("/")
         for origin in configured_origins.split(",")
         if origin.strip()
     ]
 
-
-@asynccontextmanager
-async def lifespan(
-    app: FastAPI,
-) -> AsyncIterator[None]:
-    app.state.service_name = SERVICE_NAME
-    app.state.service_version = SERVICE_VERSION
-    app.state.environment = os.getenv(
-        "APP_ENV",
-        "development",
+    return list(
+        dict.fromkeys(
+            [
+                *default_origins,
+                *additional_origins,
+            ]
+        )
     )
-
-    yield
-
-
-app = FastAPI(
-    title=SERVICE_DISPLAY_NAME,
-    description=(
-        "AI-driven cyber-resilience platform for critical national "
-        "infrastructure with UEBA, weak-signal correlation, attack-path "
-        "analysis, response planning, vulnerability prioritisation, "
-        "human-gated simulated containment, and tamper-evident auditing."
-    ),
-    version=SERVICE_VERSION,
-    docs_url="/docs",
-    redoc_url="/redoc",
-    openapi_url="/openapi.json",
-    lifespan=lifespan,
-)
 
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=get_allowed_origins(),
+    allow_origin_regex=r"https://.*\.azurestaticapps\.net",
     allow_credentials=True,
-    allow_methods=[
-        "GET",
-        "POST",
-        "PUT",
-        "PATCH",
-        "DELETE",
-        "OPTIONS",
-    ],
-    allow_headers=[
-        "Authorization",
-        "Content-Type",
-        "Accept",
-        "Origin",
-        "X-Requested-With",
-    ],
+    allow_methods=["*"],
+    allow_headers=["*"],
+    expose_headers=["*"],
+    max_age=86400,
 )
 
 
-@app.get(
-    "/",
-    tags=["System"],
-)
-def root() -> dict[str, Any]:
+ROUTERS: list[tuple[str, str, list[str]]] = [
+    ("app.api.scan", "/api/scan", ["URL Scanner"]),
+    (
+        "app.api.email_analysis",
+        "/api/email",
+        ["Email Analysis"],
+    ),
+    (
+        "app.api.threats",
+        "/api/threats",
+        ["Threat Intelligence"],
+    ),
+    (
+        "app.api.recon",
+        "/api/recon",
+        ["Reconnaissance"],
+    ),
+    (
+        "app.api.gophish",
+        "/api/gophish",
+        ["GoPhish"],
+    ),
+    (
+        "app.api.yara_scan",
+        "/api/yara",
+        ["YARA Scanner"],
+    ),
+    (
+        "app.api.breach",
+        "/api/breach",
+        ["Breach Analysis"],
+    ),
+    (
+        "app.api.vuln",
+        "/api/vuln",
+        ["Vulnerability Scanner"],
+    ),
+    (
+        "app.api.reports",
+        "/api/reports",
+        ["Reports"],
+    ),
+    (
+        "app.api.response_orchestrator",
+        "/api/orchestrator",
+        ["Response Orchestrator"],
+    ),
+    (
+        "app.api.vulnerability_priority",
+        "/api/vuln-priority",
+        ["Vulnerability Prioritisation"],
+    ),
+    (
+        "app.api.audit_log",
+        "/api/audit",
+        ["Audit Integrity"],
+    ),
+    (
+        "app.api.correlation",
+        "/api/correlation",
+        ["Threat Correlation"],
+    ),
+    (
+        "app.api.attack_graph",
+        "/api/attack-graph",
+        ["Attack Graph"],
+    ),
+    (
+        "app.api.pipeline",
+        "/api/pipeline",
+        ["Event Pipeline"],
+    ),
+    (
+        "app.api.prediction",
+        "/api/prediction",
+        ["Attack Prediction"],
+    ),
+    (
+        "app.api.response",
+        "/api/response",
+        ["Response Automation"],
+    ),
+    (
+        "app.api.ueba",
+        "/api/ueba",
+        ["UEBA"],
+    ),
+    (
+        "app.api.pentest",
+        "/api/pentest",
+        ["Penetration Testing"],
+    ),
+    (
+        "app.api.shodan",
+        "/api/shodan",
+        ["Shodan"],
+    ),
+    (
+        "app.api.vuln_scan",
+        "/api/vuln-scan",
+        ["Advanced Vulnerability Scan"],
+    ),
+]
+
+
+loaded_routers: list[str] = []
+failed_routers: dict[str, str] = {}
+
+
+def register_router(
+    module_name: str,
+    prefix: str,
+    tags: list[str],
+) -> None:
+    try:
+        module: Any = importlib.import_module(module_name)
+        router = getattr(module, "router", None)
+
+        if router is None:
+            raise AttributeError(
+                f"{module_name} does not export a router."
+            )
+
+        app.include_router(
+            router,
+            prefix=prefix,
+            tags=tags,
+        )
+
+        loaded_routers.append(prefix)
+
+    except Exception as exc:
+        failed_routers[module_name] = (
+            f"{type(exc).__name__}: {exc}"
+        )
+
+        print(
+            "[CyberShield] Router skipped:",
+            module_name,
+            failed_routers[module_name],
+        )
+
+
+for module_name, prefix, tags in ROUTERS:
+    register_router(
+        module_name,
+        prefix,
+        tags,
+    )
+
+
+@app.get("/", tags=["System"])
+async def root() -> dict[str, Any]:
     return {
-        "service": SERVICE_DISPLAY_NAME,
-        "service_id": SERVICE_NAME,
-        "version": SERVICE_VERSION,
+        "service": "CyberShield Detection Engine",
         "status": "running",
-        "environment": os.getenv(
-            "APP_ENV",
-            "development",
-        ),
+        "version": "1.0.0",
         "documentation": "/docs",
-        "simulation_only_response": True,
-        "paths": {
-            "application_directory": str(APP_DIRECTORY),
-            "detection_engine_directory": str(
-                DETECTION_ENGINE_DIRECTORY
-            ),
-            "project_root_directory": str(
-                PROJECT_ROOT_DIRECTORY
-            ),
-        },
-        "capabilities": [
-            "phishing and malicious URL analysis",
-            "email threat analysis",
-            "YARA scanning",
-            "network reconnaissance",
-            "breach intelligence",
-            "vulnerability scanning",
-            "UEBA anomaly detection",
-            "weak-signal correlation",
-            "attack-path modelling",
-            "attack-stage prediction",
-            "response playbooks",
-            "human approval workflows",
-            "safe simulated containment",
-            "vulnerability prioritisation",
-            "SHA-256 chained audit trail",
-            "end-to-end resilience pipeline",
-        ],
-        "prototype_disclosures": {
-            "response_execution": (
-                "Simulation mode only. No live infrastructure is modified."
-            ),
-            "audit_storage": (
-                "Currently in-memory for demonstration unless PostgreSQL "
-                "persistence has been configured separately."
-            ),
-            "vulnerability_demo_data": (
-                "The demonstration endpoint uses synthetic findings."
-            ),
-        },
     }
 
 
-@app.get(
-    "/health",
-    tags=["System"],
-)
-def health() -> dict[str, Any]:
+@app.get("/health", tags=["System"])
+@app.get("/api/health", tags=["System"])
+async def health() -> dict[str, Any]:
     return {
         "status": "healthy",
-        "service": SERVICE_NAME,
-        "version": SERVICE_VERSION,
-        "environment": os.getenv(
-            "APP_ENV",
-            "development",
-        ),
+        "service": "detection-engine",
+        "loaded_router_count": len(loaded_routers),
+        "loaded_routers": loaded_routers,
+        "failed_router_count": len(failed_routers),
+        "failed_routers": failed_routers,
     }
-
-
-@app.get(
-    "/ready",
-    tags=["System"],
-)
-def readiness() -> dict[str, Any]:
-    return {
-        "status": "ready",
-        "service": SERVICE_NAME,
-        "version": SERVICE_VERSION,
-        "checks": {
-            "api": True,
-            "phishing_detection": True,
-            "email_analysis": True,
-            "yara_scanning": True,
-            "reconnaissance": True,
-            "breach_intelligence": True,
-            "vulnerability_scanning": True,
-            "ueba": True,
-            "correlation": True,
-            "prediction": True,
-            "attack_graph": True,
-            "response_playbooks": True,
-            "approval_engine": True,
-            "safe_executor": True,
-            "vulnerability_prioritisation": True,
-            "audit_integrity": True,
-            "resilience_pipeline": True,
-        },
-        "execution_modes": {
-            "response_orchestrator": "SIMULATED",
-            "audit_storage": "IN_MEMORY_DEMO",
-        },
-    }
-
-
-# ---------------------------------------------------------------------------
-# Existing CyberShield detection and intelligence routes
-# ---------------------------------------------------------------------------
-
-app.include_router(
-    scan_router,
-    prefix="/api/scan",
-    tags=["URL and Threat Scanning"],
-)
-
-app.include_router(
-    email_router,
-    prefix="/api/email",
-    tags=["Email Analysis"],
-)
-
-app.include_router(
-    threats_router,
-    prefix="/api/threats",
-    tags=["Threat Intelligence"],
-)
-
-app.include_router(
-    reports_router,
-    prefix="/api/reports",
-    tags=["Reports"],
-)
-
-app.include_router(
-    recon_router,
-    prefix="/api/recon",
-    tags=["Reconnaissance"],
-)
-
-app.include_router(
-    gophish_router,
-    prefix="/api/gophish",
-    tags=["GoPhish"],
-)
-
-app.include_router(
-    yara_router,
-    prefix="/api/yara",
-    tags=["YARA Analysis"],
-)
-
-app.include_router(
-    breach_router,
-    prefix="/api/breach",
-    tags=["Breach Intelligence"],
-)
-
-app.include_router(
-    vuln_router,
-    prefix="/api/vuln",
-    tags=["Vulnerability Scanner"],
-)
-
-
-# ---------------------------------------------------------------------------
-# Existing CNI resilience and AI routes
-# ---------------------------------------------------------------------------
-
-app.include_router(
-    ueba_router,
-)
-
-app.include_router(
-    correlation_router,
-)
-
-app.include_router(
-    attack_graph_router,
-)
-
-app.include_router(
-    prediction_router,
-)
-
-app.include_router(
-    response_router,
-)
-
-app.include_router(
-    pipeline_router,
-)
-
-
-# ---------------------------------------------------------------------------
-# New PS7-aligned prototype additions
-# ---------------------------------------------------------------------------
-
-app.include_router(
-    vulnerability_priority_router,
-    prefix="/api/vuln-priority",
-    tags=["Vulnerability Prioritisation"],
-)
-
-app.include_router(
-    audit_log_router,
-    prefix="/api/audit",
-    tags=["Audit Integrity"],
-)
-
-app.include_router(
-    response_orchestrator_router,
-    prefix="/api/orchestrator",
-    tags=["Simulated Response Orchestrator"],
-)

@@ -1,4 +1,6 @@
-﻿function sanitizeString(value) {
+﻿"use strict";
+
+function sanitizeString(value) {
   if (typeof value !== "string") {
     return value;
   }
@@ -21,34 +23,44 @@ function sanitizeValue(value) {
     return value.map(sanitizeValue);
   }
 
-  if (value && typeof value === "object") {
+  if (
+    value &&
+    typeof value === "object"
+  ) {
     for (const key of Object.keys(value)) {
-      value[key] = sanitizeValue(value[key]);
+      value[key] =
+        sanitizeValue(value[key]);
     }
-
-    return value;
   }
 
   return value;
 }
 
-function sanitizeMiddleware(req, res, next) {
+function sanitizeMiddleware(
+  req,
+  res,
+  next,
+) {
   try {
-    if (req.body && typeof req.body === "object") {
+    if (
+      req.body &&
+      typeof req.body === "object"
+    ) {
       sanitizeValue(req.body);
     }
 
-    if (req.params && typeof req.params === "object") {
-      sanitizeValue(req.params);
-    }
-
-    if (req.query && typeof req.query === "object") {
-      sanitizeValue(req.query);
-    }
+    /*
+     * Do not mutate req.query in Express 5.
+     * Express 5 may expose req.query using a getter.
+     */
 
     return next();
   } catch (error) {
-    console.error("[SANITIZE ERROR]", error);
+    console.error(
+      "[SANITIZE ERROR]",
+      error,
+    );
+
     return res.status(400).json({
       error: "Invalid request data",
     });

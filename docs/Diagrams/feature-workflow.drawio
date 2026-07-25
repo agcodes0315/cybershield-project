@@ -1,0 +1,148 @@
+<mxfile host="app.diagrams.net" agent="CyberShield-doc-gen">
+  <diagram name="Feature Workflow" id="wf1">
+    <mxGraphModel dx="2060" dy="1054" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1350" pageHeight="1360" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="login" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#2d7d46;fontSize=12;fontStyle=1;arcSize=10;" value="1. Login (JWT issued, RBAC role loaded)" vertex="1">
+          <mxGeometry height="65" width="320" x="540" y="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="dashboard" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#1a73e8;fontSize=12;fontStyle=1;arcSize=10;" value="2. SOC Command Center Dashboard (real-time WebSocket feed)" vertex="1">
+          <mxGeometry height="65" width="320" x="540" y="140" as="geometry" />
+        </mxCell>
+
+        <mxCell id="scan" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;fontStyle=1;arcSize=10;" value="3. Submit IOC / URL / Email for Analysis" vertex="1">
+          <mxGeometry height="65" width="320" x="540" y="250" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ti" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;dashed=1;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;arcSize=10;" value="&lt;b&gt;4. Threat Intelligence Enrichment&lt;/b&gt;&lt;hr size=&quot;1&quot;&gt;PhishTank&lt;br&gt;VirusTotal&lt;br&gt;AbuseIPDB&lt;br&gt;Shodan&lt;br&gt;HIBP" vertex="1">
+          <mxGeometry height="160" width="360" x="520" y="360" as="geometry" />
+        </mxCell>
+
+        <mxCell id="recon" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff4e5;strokeColor=#d79b00;fontSize=11;dashed=0;" value="4b. Reconnaissance (domain intel, attack surface) — optional" vertex="1">
+          <mxGeometry height="60" width="320" x="540" y="550" as="geometry" />
+        </mxCell>
+
+        <mxCell id="mitre" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff4e5;strokeColor=#d79b00;fontSize=11;dashed=0;" value="5. MITRE ATT&amp;CK Mapping (technique / tactic / coverage)" vertex="1">
+          <mxGeometry height="65" width="320" x="540" y="640" as="geometry" />
+        </mxCell>
+
+        <mxCell id="risk" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#2d7d46;fontSize=12;fontStyle=1;arcSize=10;" value="6. Unified Risk Assessment&#10;(Risk Scoring + Vulnerability Prioritization)" vertex="1">
+          <mxGeometry height="70" width="320" x="540" y="735" as="geometry" />
+        </mxCell>
+
+        <mxCell id="response" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;fontStyle=1;" value="7. Response Orchestrator (SOAR)&#10;Automated Playbook OR Human Approval" vertex="1">
+          <mxGeometry height="110" width="320" x="540" y="835" as="geometry" />
+        </mxCell>
+
+        <mxCell id="resilience" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;fontStyle=1;arcSize=10;" value="8. Cyber Resilience Engine (organizational risk updated)" vertex="1">
+          <mxGeometry height="65" width="320" x="540" y="975" as="geometry" />
+        </mxCell>
+
+        <mxCell id="pdf" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#333333;fontSize=12;arcSize=10;" value="9. PDF Report Generation" vertex="1">
+          <mxGeometry height="60" width="320" x="540" y="1070" as="geometry" />
+        </mxCell>
+
+        <mxCell id="analyst_review" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#2d7d46;fontSize=12;fontStyle=1;arcSize=10;" value="10. Analyst Review &amp; Investigation" vertex="1">
+          <mxGeometry height="65" width="320" x="540" y="1160" as="geometry" />
+        </mxCell>
+
+        <!-- WebSocket events box, expanded -->
+        <mxCell id="ws" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#999999;verticalAlign=top;align=left;spacingLeft=8;spacingTop=8;fontStyle=1;fontSize=13;dashed=1;" value="&lt;b&gt;Real-time WebSocket Events&lt;/b&gt;&lt;hr size=&quot;1&quot;&gt;&lt;font style=&quot;font-weight:normal;font-size:11px;&quot;&gt;New Threat&lt;br&gt;Scan Completed&lt;br&gt;Incident Updated&lt;br&gt;Response Executed&lt;br&gt;Dashboard Refresh&lt;/font&gt;" vertex="1">
+          <mxGeometry height="220" width="320" x="940" y="360" as="geometry" />
+        </mxCell>
+
+        <!-- Colour legend -->
+        <mxCell id="legend_box" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#999999;dashed=1;verticalAlign=top;align=left;spacingLeft=10;spacingTop=8;fontStyle=1;fontSize=12;" value="Legend" vertex="1">
+          <mxGeometry height="190" width="320" x="940" y="620" as="geometry" />
+        </mxCell>
+        <mxCell id="legend_green" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#2d7d46;" value="" vertex="1">
+          <mxGeometry height="16" width="16" x="955" y="655" as="geometry" />
+        </mxCell>
+        <mxCell id="legend_green_label" parent="1" style="text;html=1;fontSize=11;align=left;verticalAlign=middle;" value="Green — User action / decision point" vertex="1">
+          <mxGeometry height="20" width="280" x="980" y="653" as="geometry" />
+        </mxCell>
+        <mxCell id="legend_blue" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#1a73e8;" value="" vertex="1">
+          <mxGeometry height="16" width="16" x="955" y="685" as="geometry" />
+        </mxCell>
+        <mxCell id="legend_blue_label" parent="1" style="text;html=1;fontSize=11;align=left;verticalAlign=middle;" value="Blue — Dashboard / live feed" vertex="1">
+          <mxGeometry height="20" width="280" x="980" y="683" as="geometry" />
+        </mxCell>
+        <mxCell id="legend_orange" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" value="" vertex="1">
+          <mxGeometry height="16" width="16" x="955" y="715" as="geometry" />
+        </mxCell>
+        <mxCell id="legend_orange_label" parent="1" style="text;html=1;fontSize=11;align=left;verticalAlign=middle;" value="Orange — Detection / analysis stage" vertex="1">
+          <mxGeometry height="20" width="280" x="980" y="713" as="geometry" />
+        </mxCell>
+        <mxCell id="legend_grey" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" value="" vertex="1">
+          <mxGeometry height="16" width="16" x="955" y="745" as="geometry" />
+        </mxCell>
+        <mxCell id="legend_grey_label" parent="1" style="text;html=1;fontSize=11;align=left;verticalAlign=middle;" value="Grey — External services" vertex="1">
+          <mxGeometry height="20" width="280" x="980" y="743" as="geometry" />
+        </mxCell>
+        <mxCell id="legend_gold" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="" vertex="1">
+          <mxGeometry height="16" width="16" x="955" y="775" as="geometry" />
+        </mxCell>
+        <mxCell id="legend_gold_label" parent="1" style="text;html=1;fontSize=11;align=left;verticalAlign=middle;" value="Gold — SOAR / orchestration" vertex="1">
+          <mxGeometry height="20" width="280" x="980" y="773" as="geometry" />
+        </mxCell>
+
+        <!-- Main flow edges -->
+        <mxCell id="e1000" edge="1" parent="1" source="login" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#333333;strokeWidth=1.5;fontSize=11;jettySize=auto;orthogonalLoop=1;endArrow=block;endFill=1;" target="dashboard" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e1001" edge="1" parent="1" source="dashboard" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#333333;strokeWidth=1.5;fontSize=11;jettySize=auto;orthogonalLoop=1;endArrow=block;endFill=1;" target="scan" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e1002" edge="1" parent="1" source="scan" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#333333;strokeWidth=1.5;fontSize=11;jettySize=auto;orthogonalLoop=1;endArrow=block;endFill=1;" target="ti" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e1003" edge="1" parent="1" source="ti" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#666666;strokeWidth=1.5;fontSize=11;dashed=1;endArrow=block;endFill=1;" target="recon" value="optional">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e1004" edge="1" parent="1" source="ti" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#333333;strokeWidth=1.5;fontSize=11;jettySize=auto;orthogonalLoop=1;endArrow=block;endFill=1;" target="mitre" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e1005" edge="1" parent="1" source="recon" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#666666;strokeWidth=1.5;fontSize=11;dashed=1;endArrow=block;endFill=1;" target="mitre" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e1006" edge="1" parent="1" source="mitre" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#333333;strokeWidth=1.5;fontSize=11;jettySize=auto;orthogonalLoop=1;endArrow=block;endFill=1;" target="risk" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e1007" edge="1" parent="1" source="risk" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#333333;strokeWidth=1.5;fontSize=11;jettySize=auto;orthogonalLoop=1;endArrow=block;endFill=1;" target="response" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e1008" edge="1" parent="1" source="response" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#333333;strokeWidth=1.5;fontSize=11;jettySize=auto;orthogonalLoop=1;endArrow=block;endFill=1;" target="resilience" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e1009" edge="1" parent="1" source="resilience" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#333333;strokeWidth=1.5;fontSize=11;jettySize=auto;orthogonalLoop=1;endArrow=block;endFill=1;" target="pdf" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e1012" edge="1" parent="1" source="pdf" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#333333;strokeWidth=1.5;fontSize=11;jettySize=auto;orthogonalLoop=1;endArrow=block;endFill=1;" target="analyst_review" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- WebSocket notify edges -->
+        <mxCell id="e1010" edge="1" parent="1" source="risk" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#666666;strokeWidth=1.5;fontSize=11;dashed=1;exitX=1;exitY=0.3;entryX=0;entryY=0.2;" target="ws" value="notify">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e1011" edge="1" parent="1" source="response" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#666666;strokeWidth=1.5;fontSize=11;dashed=1;exitX=1;exitY=0.3;entryX=0;entryY=0.6;" target="ws" value="notify">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Feedback loop: resilience back to dashboard -->
+        <mxCell id="e1013" edge="1" parent="1" source="resilience" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#1a73e8;strokeWidth=1.5;fontSize=11;dashed=1;exitX=0;exitY=0.5;entryX=0;entryY=0.5;" target="dashboard" value="Updated KPIs">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="380" y="1007" />
+              <mxPoint x="380" y="172" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

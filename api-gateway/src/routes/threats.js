@@ -25,9 +25,15 @@ async function fetchAndStoreThreats(req, res) {
       : [];
 
     let stored = 0;
+    let failed = 0;
 
     for (const entry of entries) {
       try {
+        if (!entry?.url) {
+          failed += 1;
+          continue;
+        }
+
         const result = await db.query(
           `
           INSERT INTO threat_entries (
@@ -57,7 +63,7 @@ async function fetchAndStoreThreats(req, res) {
           RETURNING id
           `,
           [
-            entry.url,
+            String(entry.url).trim(),
             entry.source || "unknown",
             entry.threat_type || "unknown",
             Number(entry.confidence || 0),
@@ -70,9 +76,11 @@ async function fetchAndStoreThreats(req, res) {
           stored += 1;
         }
       } catch (error) {
+        failed += 1;
+
         console.error(
           "[THREAT STORE ERROR]",
-          entry.url,
+          entry?.url || "unknown",
           error.message
         );
       }
@@ -81,7 +89,9 @@ async function fetchAndStoreThreats(req, res) {
     return res.json({
       total_fetched: data.total || entries.length,
       stored,
-      message: data.message || "Threat feeds processed",
+      failed,
+      message:
+        data.message || "Threat feeds processed successfully",
     });
   } catch (error) {
     console.error("[THREAT FETCH ERROR]", error);
@@ -93,63 +103,84 @@ async function fetchAndStoreThreats(req, res) {
   }
 }
 
-router.post("/fetch", authenticate, fetchAndStoreThreats);
-router.get("/feeds/fetch", authenticate, fetchAndStoreThreats);
+router.post(
+  "/fetch",
+  authenticate,
+  fetchAndStoreThreats
+);
 
-router.get("/search", authenticate, async (req, res) => {
-  try {
-    const url = String(req.query.url || "").trim();
+router.get(
+  "/search",
+  authenticate,
+  async (req, res) => {
+    try {
+      const url = String(
+        req.query.url || ""
+      ).trim();
 
-    if (!url) {
-      return res.status(400).json({
-        error: "url query parameter is required",
+      if (!url) {
+        return res.status(400).json({
+          error:
+            "url query parameter is required",
+        });
+      }
+
+      const result = await db.query(
+        `
+        SELECT *
+        FROM threat_entries
+        WHERE url ILIKE $1
+        ORDER BY last_seen DESC
+        LIMIT 20
+        `,
+        [`%${url}%`]
+      );
+
+      return res.json({
+        query: url,
+        count: result.rows.length,
+        entries: result.rows,
+      });
+    } catch (error) {
+      console.error(
+        "[THREAT SEARCH ERROR]",
+        error
+      );
+
+      return res.status(500).json({
+        error: "Threat search failed",
       });
     }
-
-    const result = await db.query(
-      `
-      SELECT *
-      FROM threat_entries
-      WHERE url ILIKE $1
-      ORDER BY last_seen DESC
-      LIMIT 20
-      `,
-      [`%${url}%`]
-    );
-
-    return res.json({
-      query: url,
-      count: result.rows.length,
-      entries: result.rows,
-    });
-  } catch (error) {
-    console.error("[THREAT SEARCH ERROR]", error);
-
-    return res.status(500).json({
-      error: "Threat search failed",
-    });
   }
-});
+);
 
-router.get("/recent", authenticate, async (req, res) => {
-  try {
-    const result = await db.query(
-      `
-      SELECT *
-      FROM threat_entries
-      ORDER BY last_seen DESC
-      LIMIT 50
-      `
-    );
+router.get(
+  "/recent",
+  authenticate,
+  async (req, res) => {
+    try {
+      const result = await db.query(
+        `
+        SELECT *
+        FROM threat_entries
+        ORDER BY last_seen DESC
+        LIMIT 50
+        `
+      );
 
-    return res.json(result.rows);
-  } catch (error) {
-    console.error("[RECENT THREATS ERROR]", error);
+      return res.json(result.rows);
+    } catch (error) {
+      console.error(
+        "[RECENT THREATS ERROR]",
+        error
+      );
 
-    return res.status(500).json({
-      error: "Failed to fetch recent threats",
-    });
+      return res.status(500).json({
+        error:
+          "Failed to fetch recent threats",
+      });
+    }
   }
-});
+);
 
 module.exports = router;

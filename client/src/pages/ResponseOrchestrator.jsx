@@ -1,266 +1,165 @@
-// client/src/pages/ResponseOrchestrator.jsx
-
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+  Activity,
+  AlertTriangle,
+  CheckCircle2,
+  Clock3,
+  Play,
+  RefreshCw,
+  ShieldCheck,
+  XCircle,
+  Zap,
+} from 'lucide-react';
 
 import { useAuth } from '../context/AuthContext';
-import {
-  audit,
-  orchestrator,
-} from '../services/api';
+import { audit, orchestrator } from '../services/api';
+import './ResponseOrchestrator.css';
 
-const BLAST_COLOR = {
-  LOW: '#34d399',
-  MEDIUM: '#fbbf24',
-  HIGH: '#fb923c',
-  CRITICAL: '#f87171',
-  UNKNOWN: '#94a3b8',
-};
+const AUTO_READY_STATUSES = new Set([
+  'AUTO_EXECUTABLE',
+  'READY_FOR_AUTO_EXECUTION',
+]);
 
-const STATUS_COLOR = {
-  PENDING_APPROVAL: '#fbbf24',
-  AUTO_EXECUTABLE: '#38bdf8',
-  SIMULATED_SUCCESS: '#34d399',
-  APPROVED: '#34d399',
-  EXECUTED: '#34d399',
-  REJECTED: '#f87171',
-  FAILED: '#f87171',
-  UNKNOWN: '#94a3b8',
-};
+const COMPLETE_STATUSES = new Set([
+  'APPROVED',
+  'EXECUTED',
+  'SIMULATED_SUCCESS',
+  'COMPLETED',
+]);
 
 const getIncidentId = (incident, index = 0) =>
-  incident?.incident_id ||
-  incident?.id ||
-  `incident-${index}`;
+  incident?.incident_id || incident?.id || `incident-${index}`;
 
 const getActions = (incident) =>
-  Array.isArray(incident?.actions)
-    ? incident.actions
-    : [];
+  Array.isArray(incident?.actions) ? incident.actions : [];
 
 const normaliseIncidents = (data) => {
-  if (Array.isArray(data)) {
-    return data;
-  }
-
-  if (Array.isArray(data?.incidents)) {
-    return data.incidents;
-  }
-
-  if (Array.isArray(data?.items)) {
-    return data.items;
-  }
-
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data?.incidents)) return data.incidents;
+  if (Array.isArray(data?.items)) return data.items;
   return [];
 };
 
 const normaliseTrail = (data) => {
-  if (Array.isArray(data)) {
-    return data;
-  }
-
-  if (Array.isArray(data?.trail)) {
-    return data.trail;
-  }
-
-  if (Array.isArray(data?.entries)) {
-    return data.entries;
-  }
-
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data?.trail)) return data.trail;
+  if (Array.isArray(data?.entries)) return data.entries;
   return [];
 };
 
-const formatDateTime = (value) => {
-  if (!value) {
-    return 'Time unavailable';
-  }
-
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return String(value);
-  }
-
-  return date.toLocaleString();
+const statusTone = (status) => {
+  const value = String(status || '').toUpperCase();
+  if (COMPLETE_STATUSES.has(value)) return 'success';
+  if (value === 'REJECTED' || value === 'FAILED') return 'danger';
+  if (value === 'PENDING_APPROVAL' || value === 'AWAITING_HUMAN_APPROVAL') return 'warning';
+  if (AUTO_READY_STATUSES.has(value)) return 'info';
+  return 'neutral';
 };
 
-const formatTime = (value) => {
-  if (!value) {
-    return '—';
-  }
-
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return String(value);
-  }
-
-  return date.toLocaleTimeString();
+const formatLabel = (value, fallback = 'Unknown') => {
+  if (!value) return fallback;
+  return String(value)
+    .replace(/_/g, ' ')
+    .toLowerCase()
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
 };
 
 const formatConfidence = (value) => {
-  const confidence = Number(value);
-
-  if (!Number.isFinite(confidence)) {
-    return 'Not available';
-  }
-
-  const percentage =
-    confidence <= 1
-      ? confidence * 100
-      : confidence;
-
-  return `${Math.round(percentage)}%`;
+  const number = Number(value);
+  if (!Number.isFinite(number)) return 'N/A';
+  return `${Math.round(number <= 1 ? number * 100 : number)}%`;
 };
 
-const formatLabel = (value, fallback = 'UNKNOWN') => {
-  if (!value) {
-    return fallback;
-  }
+const formatDateTime = (value) => {
+  if (!value) return 'Time unavailable';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString();
+};
 
-  return String(value)
-    .replace(/_/g, ' ')
-    .trim();
+const formatTime = (value) => {
+  if (!value) return '—';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleTimeString();
+};
+
+const blastTone = (value) => {
+  const level = String(value || '').toUpperCase();
+  if (level === 'LOW') return 'success';
+  if (level === 'MEDIUM') return 'warning';
+  if (level === 'HIGH') return 'orange';
+  if (level === 'CRITICAL') return 'danger';
+  return 'neutral';
 };
 
 export default function ResponseOrchestrator() {
   const { user } = useAuth();
-
   const [incidents, setIncidents] = useState([]);
   const [selected, setSelected] = useState(null);
   const [trail, setTrail] = useState([]);
-
   const [loading, setLoading] = useState(true);
-  const [trailLoading, setTrailLoading] =
-    useState(false);
-
+  const [trailLoading, setTrailLoading] = useState(false);
   const [loadError, setLoadError] = useState('');
-  const [actionError, setActionError] =
-    useState('');
+  const [actionError, setActionError] = useState('');
+  const [busyAction, setBusyAction] = useState('');
+  const [lastUpdated, setLastUpdated] = useState(null);
 
-  const [busyAction, setBusyAction] =
-    useState(null);
+  const loadIncidents = useCallback(async ({ showLoading = false } = {}) => {
+    if (showLoading) setLoading(true);
 
-  const loadIncidents = useCallback(
-    async ({ showLoading = false } = {}) => {
-      if (showLoading) {
-        setLoading(true);
-      }
+    try {
+      const response = await orchestrator.list();
+      const list = normaliseIncidents(response?.data);
 
-      try {
-        const response =
-          await orchestrator.list();
-
-        const list = normaliseIncidents(
-          response?.data,
+      setIncidents(list);
+      setLoadError('');
+      setLastUpdated(new Date());
+      setSelected((current) => {
+        if (!list.length) return null;
+        const exists = list.some(
+          (incident, index) => getIncidentId(incident, index) === current,
         );
-
-        setIncidents(list);
-        setLoadError('');
-
-        setSelected((currentSelected) => {
-          if (list.length === 0) {
-            return null;
-          }
-
-          const currentStillExists =
-            list.some(
-              (incident, index) =>
-                getIncidentId(
-                  incident,
-                  index,
-                ) === currentSelected,
-            );
-
-          if (
-            currentSelected &&
-            currentStillExists
-          ) {
-            return currentSelected;
-          }
-
-          return getIncidentId(
-            list[0],
-            0,
-          );
-        });
-      } catch (error) {
-        console.error(
-          'Failed to load incidents:',
-          error,
+        return exists ? current : getIncidentId(list[0], 0);
+      });
+    } catch (error) {
+      console.error('Failed to load incidents:', error);
+      if (error?.response?.status === 404) {
+        setLoadError(
+          'The orchestrator route was not found. Confirm that the resilience orchestrator routes are registered in the API gateway.',
         );
-
-        if (error?.response?.status === 404) {
-          setLoadError(
-            'The orchestrator route was not found. Check that /api/orchestrator/incidents is registered in the API gateway.',
-          );
-        } else if (
-          error?.code === 'ECONNABORTED'
-        ) {
-          setLoadError(
-            'The orchestrator request timed out.',
-          );
-        } else {
-          setLoadError(
-            'Could not load incidents. Confirm that the API gateway and FastAPI backend are running.',
-          );
-        }
-      } finally {
-        setLoading(false);
-      }
-    },
-    [],
-  );
-
-  const loadTrail = useCallback(
-    async (incidentId) => {
-      if (!incidentId) {
-        setTrail([]);
-        return;
-      }
-
-      setTrailLoading(true);
-
-      try {
-        const response =
-          await audit.trail(incidentId);
-
-        setTrail(
-          normaliseTrail(response?.data),
+      } else if (error?.code === 'ECONNABORTED') {
+        setLoadError('The orchestrator request timed out.');
+      } else {
+        setLoadError(
+          'Could not load incidents. Confirm that the API gateway and detection engine are running.',
         );
-      } catch (error) {
-        console.error(
-          'Failed to load audit trail:',
-          error,
-        );
-
-        setTrail([]);
-      } finally {
-        setTrailLoading(false);
       }
-    },
-    [],
-  );
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const loadTrail = useCallback(async (incidentId) => {
+    if (!incidentId) {
+      setTrail([]);
+      return;
+    }
+
+    setTrailLoading(true);
+    try {
+      const response = await audit.trail(incidentId);
+      setTrail(normaliseTrail(response?.data));
+    } catch (error) {
+      console.error('Failed to load audit trail:', error);
+      setTrail([]);
+    } finally {
+      setTrailLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    loadIncidents({
-      showLoading: true,
-    });
-
-    const intervalId = window.setInterval(
-      () => {
-        loadIncidents();
-      },
-      6000,
-    );
-
-    return () => {
-      window.clearInterval(intervalId);
-    };
+    loadIncidents({ showLoading: true });
+    const intervalId = window.setInterval(() => loadIncidents(), 6000);
+    return () => window.clearInterval(intervalId);
   }, [loadIncidents]);
 
   useEffect(() => {
@@ -270,1130 +169,274 @@ export default function ResponseOrchestrator() {
   const activeIncident = useMemo(
     () =>
       incidents.find(
-        (incident, index) =>
-          getIncidentId(
-            incident,
-            index,
-          ) === selected,
+        (incident, index) => getIncidentId(incident, index) === selected,
       ) || null,
     [incidents, selected],
   );
 
-  const activeActions =
-    getActions(activeIncident);
+  const activeActions = getActions(activeIncident);
 
-  const handleDecision = async (
-    incidentId,
-    actionIndex,
-    decision,
-  ) => {
-    const actionKey =
-      `${incidentId}-${actionIndex}-${decision}`;
+  const metrics = useMemo(() => {
+    const actions = incidents.flatMap((incident) => getActions(incident));
+    return {
+      incidents: incidents.length,
+      pending: actions.filter(
+        (action) => String(action?.status || '').toUpperCase() === 'PENDING_APPROVAL',
+      ).length,
+      ready: actions.filter((action) =>
+        AUTO_READY_STATUSES.has(String(action?.status || '').toUpperCase()),
+      ).length,
+      resolved: actions.filter((action) =>
+        COMPLETE_STATUSES.has(String(action?.status || '').toUpperCase()),
+      ).length,
+    };
+  }, [incidents]);
 
-    setBusyAction(actionKey);
+  const decide = async (incidentId, actionIndex, decision) => {
+    const key = `${incidentId}-${actionIndex}-${decision}`;
+    setBusyAction(key);
     setActionError('');
 
     try {
-      await orchestrator.decide(
-        incidentId,
-        {
-          approver:
-            user?.username ||
-            user?.name ||
-            user?.email ||
-            'analyst',
-          decision,
-          action_index: actionIndex,
-        },
-      );
-
-      await loadIncidents();
-      await loadTrail(incidentId);
+      await orchestrator.decide(incidentId, {
+        approver: user?.username || user?.name || user?.email || 'analyst',
+        decision,
+        action_index: actionIndex,
+      });
+      await Promise.all([loadIncidents(), loadTrail(incidentId)]);
     } catch (error) {
-      console.error(
-        'Decision failed:',
-        error,
-      );
-
+      console.error('Decision failed:', error);
       setActionError(
         error?.response?.data?.detail ||
-        error?.response?.data?.message ||
-        'The decision could not be recorded. Check the backend logs.',
+          error?.response?.data?.message ||
+          'The decision could not be recorded. Check the backend logs.',
       );
     } finally {
-      setBusyAction(null);
+      setBusyAction('');
     }
   };
 
-  const handleAutoExecute = async (
-    incidentId,
-  ) => {
-    const actionKey =
-      `${incidentId}-auto-execute`;
-
-    setBusyAction(actionKey);
+  const autoExecute = async (incidentId) => {
+    const key = `${incidentId}-execute`;
+    setBusyAction(key);
     setActionError('');
 
     try {
-      await orchestrator.autoExecute(
-        incidentId,
-      );
-
-      await loadIncidents();
-      await loadTrail(incidentId);
+      await orchestrator.autoExecute(incidentId);
+      await Promise.all([loadIncidents(), loadTrail(incidentId)]);
     } catch (error) {
-      console.error(
-        'Auto-execution failed:',
-        error,
-      );
-
+      console.error('Auto-execution failed:', error);
       setActionError(
         error?.response?.data?.detail ||
-        error?.response?.data?.message ||
-        'The simulated low-risk actions could not be executed.',
+          error?.response?.data?.message ||
+          'The approved response could not be executed.',
       );
     } finally {
-      setBusyAction(null);
+      setBusyAction('');
     }
   };
+
+  const canExecute = activeActions.some((action) =>
+    AUTO_READY_STATUSES.has(String(action?.status || '').toUpperCase()),
+  );
 
   return (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '24px',
-        minWidth: 0,
-      }}
-    >
-      <div className="fade-up">
-        <h2
-          style={{
-            margin: 0,
-            fontSize: '1.6rem',
-            fontWeight: 800,
-            color: 'var(--text-1)',
-            letterSpacing: '-0.02em',
-          }}
-        >
-          Response Orchestrator
-        </h2>
-
-        <p
-          style={{
-            marginTop: '6px',
-            marginBottom: 0,
-            fontSize: '0.9rem',
-            lineHeight: 1.6,
-            color: 'var(--text-3)',
-          }}
-        >
-          Simulation Mode — recommended
-          actions are not applied to live
-          infrastructure. Medium-risk and
-          high-risk actions require analyst
-          approval.
-        </p>
-      </div>
-
-      {loadError && (
-        <div
-          style={{
-            padding: '13px 16px',
-            borderRadius: '12px',
-            background:
-              'rgba(248,113,113,0.08)',
-            border:
-              '1px solid rgba(248,113,113,0.2)',
-            color: '#f87171',
-            fontSize: '0.84rem',
-            lineHeight: 1.5,
-          }}
-        >
-          {loadError}
+    <main className="ro-page">
+      <section className="ro-hero">
+        <div>
+          <span className="ro-eyebrow">Cyber Resilience · SOAR Simulation</span>
+          <h1>Response Orchestrator</h1>
+          <p>
+            Review prioritized incidents, approve high-impact actions, execute
+            low-risk playbooks, and verify every decision in the audit ledger.
+          </p>
         </div>
-      )}
 
-      {actionError && (
-        <div
-          style={{
-            padding: '13px 16px',
-            borderRadius: '12px',
-            background:
-              'rgba(251,146,60,0.08)',
-            border:
-              '1px solid rgba(251,146,60,0.2)',
-            color: '#fb923c',
-            fontSize: '0.84rem',
-            lineHeight: 1.5,
-          }}
-        >
-          {actionError}
-        </div>
-      )}
-
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns:
-            'repeat(auto-fit, minmax(300px, 1fr))',
-          gap: '20px',
-          alignItems: 'start',
-        }}
-      >
-        <section
-          style={{
-            minWidth: 0,
-            background: 'var(--bg-card)',
-            border:
-              '1px solid var(--border)',
-            borderRadius: '16px',
-            padding: '18px',
-          }}
-        >
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent:
-                'space-between',
-              gap: '12px',
-              marginBottom: '14px',
-            }}
+        <div className="ro-live-card">
+          <span className="ro-live-dot" />
+          <div>
+            <strong>Simulation mode active</strong>
+            <small>
+              {lastUpdated
+                ? `Updated ${lastUpdated.toLocaleTimeString()}`
+                : 'Connecting to orchestrator'}
+            </small>
+          </div>
+          <button
+            type="button"
+            className="ro-icon-button"
+            onClick={() => loadIncidents({ showLoading: true })}
+            aria-label="Refresh incidents"
           >
-            <h3
-              style={{
-                margin: 0,
-                fontSize: '0.95rem',
-                fontWeight: 700,
-                color: 'var(--text-1)',
-              }}
-            >
-              Incident Queue
-            </h3>
+            <RefreshCw size={16} />
+          </button>
+        </div>
+      </section>
 
-            <span
-              style={{
-                padding: '4px 9px',
-                borderRadius: '999px',
-                background:
-                  'rgba(56,189,248,0.1)',
-                color: '#38bdf8',
-                fontSize: '0.7rem',
-                fontWeight: 700,
-              }}
-            >
-              {incidents.length} total
-            </span>
+      {loadError && <div className="ro-alert ro-alert-danger">{loadError}</div>}
+      {actionError && <div className="ro-alert ro-alert-warning">{actionError}</div>}
+
+      <section className="ro-metrics">
+        <article><ShieldCheck /><span>Total incidents</span><strong>{metrics.incidents}</strong><small>Active response cases</small></article>
+        <article><Clock3 /><span>Awaiting approval</span><strong>{metrics.pending}</strong><small>Human decision required</small></article>
+        <article><Zap /><span>Auto executable</span><strong>{metrics.ready}</strong><small>Low-risk simulated actions</small></article>
+        <article><CheckCircle2 /><span>Resolved actions</span><strong>{metrics.resolved}</strong><small>Approved or executed</small></article>
+      </section>
+
+      <section className="ro-workspace">
+        <aside className="ro-panel ro-queue">
+          <div className="ro-panel-title">
+            <div><span>Incident Queue</span><h2>Response cases</h2></div>
+            <b>{incidents.length}</b>
           </div>
 
-          {loading && (
-            <p
-              style={{
-                color: 'var(--text-3)',
-                fontSize: '0.82rem',
-              }}
-            >
-              Loading incidents...
-            </p>
+          {loading && <div className="ro-state">Loading incidents…</div>}
+          {!loading && incidents.length === 0 && (
+            <div className="ro-empty"><Activity size={28} /><strong>No incidents available</strong><span>Create or trigger an incident through the orchestrator API.</span></div>
           )}
 
-          {!loading &&
-            incidents.length === 0 && (
-              <div
-                style={{
-                  padding: '24px 14px',
-                  borderRadius: '12px',
-                  background:
-                    'var(--bg-surface)',
-                  border:
-                    '1px solid var(--border)',
-                  textAlign: 'center',
-                }}
-              >
-                <div
-                  style={{
-                    color: 'var(--text-1)',
-                    fontWeight: 700,
-                    fontSize: '0.86rem',
-                  }}
+          <div className="ro-incident-list">
+            {incidents.map((incident, index) => {
+              const incidentId = getIncidentId(incident, index);
+              const actions = getActions(incident);
+              const pending = actions.filter(
+                (action) => String(action?.status || '').toUpperCase() === 'PENDING_APPROVAL',
+              ).length;
+
+              return (
+                <button
+                  type="button"
+                  key={incidentId}
+                  className={`ro-incident ${selected === incidentId ? 'is-selected' : ''}`}
+                  onClick={() => setSelected(incidentId)}
                 >
-                  No incidents available
-                </div>
-
-                <div
-                  style={{
-                    marginTop: '5px',
-                    color: 'var(--text-3)',
-                    fontSize: '0.76rem',
-                    lineHeight: 1.5,
-                  }}
-                >
-                  Trigger a supported detection
-                  or create an incident through
-                  the orchestrator API.
-                </div>
-              </div>
-            )}
-
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '8px',
-              maxHeight: '650px',
-              overflowY: 'auto',
-            }}
-          >
-            {incidents.map(
-              (incident, index) => {
-                const incidentId =
-                  getIncidentId(
-                    incident,
-                    index,
-                  );
-
-                const actions =
-                  getActions(incident);
-
-                const pendingCount =
-                  actions.filter(
-                    (action) =>
-                      action?.status ===
-                      'PENDING_APPROVAL',
-                  ).length;
-
-                const isSelected =
-                  incidentId === selected;
-
-                return (
-                  <button
-                    key={incidentId}
-                    type="button"
-                    onClick={() =>
-                      setSelected(
-                        incidentId,
-                      )
-                    }
-                    style={{
-                      width: '100%',
-                      padding: '13px 14px',
-                      borderRadius: '12px',
-                      cursor: 'pointer',
-                      textAlign: 'left',
-                      background: isSelected
-                        ? 'var(--cyan-dim)'
-                        : 'var(--bg-surface)',
-                      border: isSelected
-                        ? '1px solid rgba(56,189,248,0.3)'
-                        : '1px solid var(--border)',
-                      color:
-                        'var(--text-1)',
-                    }}
-                  >
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems:
-                          'flex-start',
-                        justifyContent:
-                          'space-between',
-                        gap: '10px',
-                      }}
-                    >
-                      <div
-                        style={{
-                          minWidth: 0,
-                        }}
-                      >
-                        <div
-                          style={{
-                            overflow: 'hidden',
-                            textOverflow:
-                              'ellipsis',
-                            whiteSpace: 'nowrap',
-                            fontWeight: 700,
-                            fontSize:
-                              '0.82rem',
-                          }}
-                        >
-                          {incidentId}
-                        </div>
-
-                        <div
-                          style={{
-                            marginTop: '3px',
-                            overflow: 'hidden',
-                            textOverflow:
-                              'ellipsis',
-                            whiteSpace: 'nowrap',
-                            fontSize:
-                              '0.73rem',
-                            color:
-                              'var(--text-3)',
-                          }}
-                        >
-                          {incident
-                            ?.detection
-                            ?.target ||
-                            incident?.target ||
-                            'Unknown target'}
-                        </div>
-                      </div>
-
-                      {pendingCount > 0 && (
-                        <span
-                          style={{
-                            flexShrink: 0,
-                            padding:
-                              '3px 7px',
-                            borderRadius:
-                              '999px',
-                            background:
-                              'rgba(251,191,36,0.1)',
-                            color:
-                              '#fbbf24',
-                            fontSize:
-                              '0.65rem',
-                            fontWeight: 700,
-                          }}
-                        >
-                          {pendingCount}{' '}
-                          pending
-                        </span>
-                      )}
-                    </div>
-                  </button>
-                );
-              },
-            )}
+                  <div className="ro-incident-top">
+                    <strong>{incidentId}</strong>
+                    <span className={`ro-badge tone-${statusTone(incident?.status)}`}>
+                      {formatLabel(incident?.status, 'Open')}
+                    </span>
+                  </div>
+                  <p>{incident?.detection?.target || incident?.target || 'Unknown target'}</p>
+                  <div className="ro-incident-meta">
+                    <span>{actions.length} actions</span>
+                    <span>{pending} pending</span>
+                    <span>{formatConfidence(incident?.detection?.confidence ?? incident?.confidence)}</span>
+                  </div>
+                </button>
+              );
+            })}
           </div>
-        </section>
+        </aside>
 
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '20px',
-            minWidth: 0,
-          }}
-        >
+        <div className="ro-main-column">
           {activeIncident ? (
             <>
-              <section
-                style={{
-                  minWidth: 0,
-                  background:
-                    'var(--bg-card)',
-                  border:
-                    '1px solid var(--border)',
-                  borderRadius: '16px',
-                  padding: '24px',
-                }}
-              >
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems:
-                      'flex-start',
-                    justifyContent:
-                      'space-between',
-                    flexWrap: 'wrap',
-                    gap: '14px',
-                  }}
-                >
-                  <div
-                    style={{
-                      minWidth: 0,
-                    }}
-                  >
-                    <h3
-                      style={{
-                        margin: 0,
-                        fontSize: '1.1rem',
-                        fontWeight: 700,
-                        color:
-                          'var(--text-1)',
-                        overflowWrap:
-                          'anywhere',
-                      }}
-                    >
-                      {getIncidentId(
-                        activeIncident,
-                      )}
-                    </h3>
-
-                    <p
-                      style={{
-                        marginTop: '5px',
-                        marginBottom: 0,
-                        color:
-                          'var(--text-3)',
-                        fontSize:
-                          '0.82rem',
-                        fontFamily:
-                          'JetBrains Mono, monospace',
-                        overflowWrap:
-                          'anywhere',
-                      }}
-                    >
-                      {activeIncident
-                        ?.detection
-                        ?.target ||
-                        activeIncident
-                          ?.target ||
-                        'Unknown target'}
-                    </p>
+              <section className="ro-panel ro-details">
+                <div className="ro-detail-header">
+                  <div>
+                    <span className="ro-kicker">Selected incident</span>
+                    <h2>{getIncidentId(activeIncident)}</h2>
+                    <p>{activeIncident?.detection?.target || activeIncident?.target || 'Unknown target'}</p>
                   </div>
-
-                  <span
-                    style={{
-                      color:
-                        'var(--text-3)',
-                      fontSize: '0.75rem',
-                    }}
-                  >
-                    {formatDateTime(
-                      activeIncident
-                        ?.created_at ||
-                      activeIncident
-                        ?.timestamp,
-                    )}
-                  </span>
+                  <div className="ro-detail-status">
+                    <span className={`ro-badge tone-${statusTone(activeIncident?.status)}`}>
+                      {formatLabel(activeIncident?.status, 'Open')}
+                    </span>
+                    <small>{formatDateTime(activeIncident?.updated_at || activeIncident?.created_at || activeIncident?.timestamp)}</small>
+                  </div>
                 </div>
 
-                <div
-                  style={{
-                    display: 'flex',
-                    flexWrap: 'wrap',
-                    gap: '8px 18px',
-                    marginTop: '14px',
-                    color:
-                      'var(--text-2)',
-                    fontSize: '0.82rem',
-                  }}
-                >
-                  <span>
-                    Source:{' '}
-                    <strong>
-                      {activeIncident
-                        ?.detection
-                        ?.source ||
-                        activeIncident
-                          ?.source ||
-                        'Unknown'}
-                    </strong>
-                  </span>
-
-                  <span>
-                    Confidence:{' '}
-                    <strong>
-                      {formatConfidence(
-                        activeIncident
-                          ?.detection
-                          ?.confidence ??
-                        activeIncident
-                          ?.confidence,
-                      )}
-                    </strong>
-                  </span>
+                <div className="ro-intel-grid">
+                  <div><span>Detection source</span><strong>{activeIncident?.detection?.source || activeIncident?.source || 'Unknown'}</strong></div>
+                  <div><span>Confidence</span><strong>{formatConfidence(activeIncident?.detection?.confidence ?? activeIncident?.confidence)}</strong></div>
+                  <div><span>Execution mode</span><strong>{formatLabel(activeIncident?.execution_mode, 'Simulation')}</strong></div>
+                  <div><span>Assigned analyst</span><strong>{user?.name || user?.username || user?.email || 'SOC analyst'}</strong></div>
                 </div>
 
-                <p
-                  style={{
-                    marginTop: '8px',
-                    marginBottom: 0,
-                    color:
-                      'var(--text-3)',
-                    fontSize: '0.8rem',
-                    lineHeight: 1.6,
-                    overflowWrap: 'anywhere',
-                  }}
-                >
-                  {activeIncident
-                    ?.detection?.reason ||
-                    activeIncident?.reason ||
-                    'No detection explanation was provided.'}
-                </p>
+                <div className="ro-rationale">
+                  <span>Detection rationale</span>
+                  <p>{activeIncident?.detection?.reason || activeIncident?.reason || 'No detection explanation was provided.'}</p>
+                </div>
 
-                <div
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '10px',
-                    marginTop: '20px',
-                  }}
-                >
-                  {activeActions.length ===
-                    0 && (
-                    <div
-                      style={{
-                        padding: '18px',
-                        borderRadius:
-                          '12px',
-                        background:
-                          'var(--bg-surface)',
-                        border:
-                          '1px solid var(--border)',
-                        color:
-                          'var(--text-3)',
-                        fontSize:
-                          '0.82rem',
-                        textAlign:
-                          'center',
-                      }}
-                    >
-                      No recommended actions
-                      were returned for this
-                      incident.
-                    </div>
-                  )}
+                <div className="ro-section-heading">
+                  <div><span>Generated playbook</span><h3>Recommended response actions</h3></div>
+                  <b>{activeActions.length} steps</b>
+                </div>
 
-                  {activeActions.map(
-                    (action, index) => {
-                      const status =
-                        String(
-                          action?.status ||
-                          'UNKNOWN',
-                        ).toUpperCase();
+                <div className="ro-action-list">
+                  {activeActions.length === 0 && <div className="ro-state">No recommended actions were returned.</div>}
+                  {activeActions.map((action, index) => {
+                    const incidentId = getIncidentId(activeIncident);
+                    const status = String(action?.status || 'UNKNOWN').toUpperCase();
+                    const approveKey = `${incidentId}-${index}-approve`;
+                    const rejectKey = `${incidentId}-${index}-reject`;
+                    const isPending = status === 'PENDING_APPROVAL';
 
-                      const blastRadius =
-                        String(
-                          action
-                            ?.blast_radius ||
-                          'UNKNOWN',
-                        ).toUpperCase();
-
-                      const statusColor =
-                        STATUS_COLOR[
-                          status
-                        ] ||
-                        STATUS_COLOR.UNKNOWN;
-
-                      const blastColor =
-                        BLAST_COLOR[
-                          blastRadius
-                        ] ||
-                        BLAST_COLOR.UNKNOWN;
-
-                      const incidentId =
-                        getIncidentId(
-                          activeIncident,
-                        );
-
-                      const approveKey =
-                        `${incidentId}-${index}-approve`;
-
-                      const rejectKey =
-                        `${incidentId}-${index}-reject`;
-
-                      const isBusy =
-                        busyAction ===
-                          approveKey ||
-                        busyAction ===
-                          rejectKey;
-
-                      return (
-                        <div
-                          key={
-                            action
-                              ?.action_id ||
-                            `${incidentId}-${index}`
-                          }
-                          style={{
-                            display: 'flex',
-                            alignItems:
-                              'center',
-                            justifyContent:
-                              'space-between',
-                            flexWrap: 'wrap',
-                            gap: '14px',
-                            padding:
-                              '15px 18px',
-                            borderRadius:
-                              '12px',
-                            background:
-                              'var(--bg-surface)',
-                            border:
-                              '1px solid var(--border)',
-                          }}
-                        >
-                          <div
-                            style={{
-                              minWidth:
-                                '180px',
-                              flex: '1 1 220px',
-                            }}
-                          >
-                            <div
-                              style={{
-                                color:
-                                  'var(--text-1)',
-                                fontWeight:
-                                  700,
-                                fontSize:
-                                  '0.86rem',
-                                overflowWrap:
-                                  'anywhere',
-                              }}
-                            >
-                              {action
-                                ?.action ||
-                                action
-                                  ?.name ||
-                                'Unnamed response action'}
-                            </div>
-
-                            <span
-                              style={{
-                                display:
-                                  'inline-block',
-                                marginTop:
-                                  '4px',
-                                color:
-                                  blastColor,
-                                fontSize:
-                                  '0.71rem',
-                                fontWeight:
-                                  700,
-                              }}
-                            >
-                              {formatLabel(
-                                blastRadius,
-                              )}{' '}
-                              blast radius
-                            </span>
-                          </div>
-
-                          <div
-                            style={{
-                              display:
-                                'flex',
-                              alignItems:
-                                'center',
-                              flexWrap:
-                                'wrap',
-                              gap: '9px',
-                            }}
-                          >
-                            <span
-                              style={{
-                                padding:
-                                  '5px 11px',
-                                borderRadius:
-                                  '999px',
-                                background:
-                                  `${statusColor}18`,
-                                color:
-                                  statusColor,
-                                fontSize:
-                                  '0.7rem',
-                                fontWeight:
-                                  700,
-                              }}
-                            >
-                              {formatLabel(
-                                status,
-                              )}
-                            </span>
-
-                            {status ===
-                              'PENDING_APPROVAL' && (
-                              <>
-                                <button
-                                  type="button"
-                                  disabled={
-                                    isBusy
-                                  }
-                                  onClick={() =>
-                                    handleDecision(
-                                      incidentId,
-                                      index,
-                                      'approve',
-                                    )
-                                  }
-                                  style={{
-                                    padding:
-                                      '7px 13px',
-                                    borderRadius:
-                                      '8px',
-                                    border:
-                                      '1px solid rgba(52,211,153,0.2)',
-                                    background:
-                                      'rgba(52,211,153,0.12)',
-                                    color:
-                                      '#34d399',
-                                    fontWeight:
-                                      700,
-                                    fontSize:
-                                      '0.75rem',
-                                    cursor:
-                                      isBusy
-                                        ? 'not-allowed'
-                                        : 'pointer',
-                                    opacity:
-                                      isBusy
-                                        ? 0.6
-                                        : 1,
-                                  }}
-                                >
-                                  {busyAction ===
-                                  approveKey
-                                    ? 'Approving...'
-                                    : 'Approve'}
-                                </button>
-
-                                <button
-                                  type="button"
-                                  disabled={
-                                    isBusy
-                                  }
-                                  onClick={() =>
-                                    handleDecision(
-                                      incidentId,
-                                      index,
-                                      'reject',
-                                    )
-                                  }
-                                  style={{
-                                    padding:
-                                      '7px 13px',
-                                    borderRadius:
-                                      '8px',
-                                    border:
-                                      '1px solid rgba(248,113,113,0.2)',
-                                    background:
-                                      'rgba(248,113,113,0.12)',
-                                    color:
-                                      '#f87171',
-                                    fontWeight:
-                                      700,
-                                    fontSize:
-                                      '0.75rem',
-                                    cursor:
-                                      isBusy
-                                        ? 'not-allowed'
-                                        : 'pointer',
-                                    opacity:
-                                      isBusy
-                                        ? 0.6
-                                        : 1,
-                                  }}
-                                >
-                                  {busyAction ===
-                                  rejectKey
-                                    ? 'Rejecting...'
-                                    : 'Reject'}
-                                </button>
-                              </>
-                            )}
-                          </div>
+                    return (
+                      <article className="ro-action" key={action?.action_id || `${incidentId}-${index}`}>
+                        <div className="ro-action-number">{index + 1}</div>
+                        <div className="ro-action-copy">
+                          <strong>{action?.action || action?.name || 'Unnamed response action'}</strong>
+                          <span className={`ro-risk tone-${blastTone(action?.blast_radius)}`}>
+                            {formatLabel(action?.blast_radius, 'Unknown')} blast radius
+                          </span>
                         </div>
-                      );
-                    },
-                  )}
+                        <div className="ro-action-side">
+                          <span className={`ro-badge tone-${statusTone(status)}`}>{formatLabel(status)}</span>
+                          {isPending && (
+                            <div className="ro-decision-buttons">
+                              <button type="button" className="approve" disabled={Boolean(busyAction)} onClick={() => decide(incidentId, index, 'approve')}>
+                                <CheckCircle2 size={14} />{busyAction === approveKey ? 'Approving…' : 'Approve'}
+                              </button>
+                              <button type="button" className="reject" disabled={Boolean(busyAction)} onClick={() => decide(incidentId, index, 'reject')}>
+                                <XCircle size={14} />{busyAction === rejectKey ? 'Rejecting…' : 'Reject'}
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </article>
+                    );
+                  })}
                 </div>
 
-                {activeActions.some(
-                  (action) =>
-                    String(
-                      action?.status,
-                    ).toUpperCase() ===
-                    'AUTO_EXECUTABLE',
-                ) && (
-                  <button
-                    type="button"
-                    disabled={
-                      busyAction ===
-                      `${getIncidentId(
-                        activeIncident,
-                      )}-auto-execute`
-                    }
-                    onClick={() =>
-                      handleAutoExecute(
-                        getIncidentId(
-                          activeIncident,
-                        ),
-                      )
-                    }
-                    style={{
-                      marginTop: '15px',
-                      padding: '10px 18px',
-                      borderRadius: '10px',
-                      border: 'none',
-                      background:
-                        'linear-gradient(135deg, #38bdf8, #818cf8)',
-                      color: '#ffffff',
-                      fontWeight: 700,
-                      fontSize: '0.8rem',
-                      cursor:
-                        busyAction
-                          ? 'not-allowed'
-                          : 'pointer',
-                      opacity:
-                        busyAction ===
-                        `${getIncidentId(
-                          activeIncident,
-                        )}-auto-execute`
-                          ? 0.65
-                          : 1,
-                    }}
-                  >
-                    {busyAction ===
-                    `${getIncidentId(
-                      activeIncident,
-                    )}-auto-execute`
-                      ? 'Executing simulation...'
-                      : 'Execute approved low-risk actions'}
-                  </button>
+                {canExecute && (
+                  <div className="ro-execute-banner">
+                    <div><Zap size={20} /><span><strong>Approved actions are ready</strong><small>Execution remains simulated and will not modify live infrastructure.</small></span></div>
+                    <button type="button" disabled={Boolean(busyAction)} onClick={() => autoExecute(getIncidentId(activeIncident))}>
+                      <Play size={15} />{busyAction === `${getIncidentId(activeIncident)}-execute` ? 'Executing…' : 'Execute approved response'}
+                    </button>
+                  </div>
                 )}
               </section>
 
-              <section
-                style={{
-                  minWidth: 0,
-                  background:
-                    'var(--bg-card)',
-                  border:
-                    '1px solid var(--border)',
-                  borderRadius: '16px',
-                  padding: '24px',
-                }}
-              >
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent:
-                      'space-between',
-                    alignItems: 'center',
-                    gap: '12px',
-                    marginBottom: '18px',
-                  }}
-                >
-                  <h3
-                    style={{
-                      margin: 0,
-                      fontSize: '1rem',
-                      fontWeight: 700,
-                      color:
-                        'var(--text-1)',
-                    }}
-                  >
-                    Audit Timeline
-                  </h3>
-
-                  <span
-                    style={{
-                      color:
-                        'var(--text-3)',
-                      fontSize: '0.72rem',
-                    }}
-                  >
-                    {trail.length} entries
-                  </span>
+              <section className="ro-panel ro-audit">
+                <div className="ro-panel-title">
+                  <div><span>Governance</span><h2>Audit timeline</h2></div>
+                  <b>{trail.length}</b>
                 </div>
 
-                {trailLoading && (
-                  <p
-                    style={{
-                      color:
-                        'var(--text-3)',
-                      fontSize: '0.82rem',
-                    }}
-                  >
-                    Loading audit entries...
-                  </p>
-                )}
-
-                {!trailLoading &&
-                  trail.length === 0 && (
-                    <p
-                      style={{
-                        color:
-                          'var(--text-3)',
-                        fontSize:
-                          '0.84rem',
-                      }}
-                    >
-                      No audit entries have
-                      been recorded for this
-                      incident yet.
-                    </p>
-                  )}
-
-                {!trailLoading && (
-                  <div
-                    style={{
-                      display: 'flex',
-                      flexDirection:
-                        'column',
-                    }}
-                  >
-                    {trail.map(
-                      (entry, index) => (
-                        <div
-                          key={
-                            entry?.id ||
-                            entry
-                              ?.entry_id ||
-                            `${entry?.created_at || 'entry'}-${index}`
-                          }
-                          style={{
-                            display:
-                              'flex',
-                            gap: '14px',
-                            paddingBottom:
-                              '17px',
-                          }}
-                        >
-                          <div
-                            style={{
-                              display:
-                                'flex',
-                              flexDirection:
-                                'column',
-                              alignItems:
-                                'center',
-                            }}
-                          >
-                            <div
-                              style={{
-                                width:
-                                  '10px',
-                                height:
-                                  '10px',
-                                borderRadius:
-                                  '50%',
-                                background:
-                                  'var(--cyan)',
-                                flexShrink: 0,
-                              }}
-                            />
-
-                            {index <
-                              trail.length -
-                                1 && (
-                              <div
-                                style={{
-                                  width:
-                                    '2px',
-                                  flex: 1,
-                                  minHeight:
-                                    '28px',
-                                  marginTop:
-                                    '3px',
-                                  background:
-                                    'var(--border)',
-                                }}
-                              />
-                            )}
-                          </div>
-
-                          <div
-                            style={{
-                              minWidth: 0,
-                            }}
-                          >
-                            <div
-                              style={{
-                                color:
-                                  'var(--text-3)',
-                                fontSize:
-                                  '0.71rem',
-                              }}
-                            >
-                              {formatTime(
-                                entry
-                                  ?.created_at ||
-                                entry
-                                  ?.timestamp,
-                              )}
-                            </div>
-
-                            <div
-                              style={{
-                                marginTop:
-                                  '2px',
-                                color:
-                                  'var(--text-1)',
-                                fontSize:
-                                  '0.85rem',
-                                fontWeight:
-                                  700,
-                                overflowWrap:
-                                  'anywhere',
-                              }}
-                            >
-                              {formatLabel(
-                                entry
-                                  ?.action ||
-                                entry
-                                  ?.event,
-                                'Audit event',
-                              )}
-                            </div>
-
-                            <div
-                              style={{
-                                marginTop:
-                                  '2px',
-                                color:
-                                  'var(--text-3)',
-                                fontSize:
-                                  '0.77rem',
-                                lineHeight:
-                                  1.5,
-                                overflowWrap:
-                                  'anywhere',
-                              }}
-                            >
-                              by{' '}
-                              {entry?.actor ||
-                                entry?.user ||
-                                'system'}
-                              {(entry
-                                ?.target ||
-                                entry
-                                  ?.resource) &&
-                                ` — ${
-                                  entry
-                                    ?.target ||
-                                  entry
-                                    ?.resource
-                                }`}
-                            </div>
-                          </div>
+                {trailLoading && <div className="ro-state">Loading audit entries…</div>}
+                {!trailLoading && trail.length === 0 && <div className="ro-state">No audit entries recorded for this incident.</div>}
+                {!trailLoading && trail.length > 0 && (
+                  <div className="ro-timeline">
+                    {trail.map((entry, index) => (
+                      <div className="ro-timeline-entry" key={entry?.id || entry?.entry_id || `${entry?.created_at}-${index}`}>
+                        <div className="ro-timeline-rail"><span />{index < trail.length - 1 && <i />}</div>
+                        <div>
+                          <div className="ro-timeline-top"><strong>{formatLabel(entry?.action || entry?.event, 'Audit event')}</strong><time>{formatTime(entry?.created_at || entry?.timestamp)}</time></div>
+                          <p>Performed by <b>{entry?.actor || entry?.user || 'system'}</b>{(entry?.target || entry?.resource) ? ` on ${entry?.target || entry?.resource}` : ''}</p>
                         </div>
-                      ),
-                    )}
+                      </div>
+                    ))}
                   </div>
                 )}
               </section>
             </>
           ) : (
-            <section
-              style={{
-                minHeight: '220px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: '40px',
-                borderRadius: '16px',
-                background: 'var(--bg-card)',
-                border:
-                  '1px solid var(--border)',
-                color: 'var(--text-3)',
-                textAlign: 'center',
-                fontSize: '0.86rem',
-              }}
-            >
-              {loading
-                ? 'Loading incident information...'
-                : 'Select an incident to view its response workflow.'}
-            </section>
+            <section className="ro-panel ro-no-selection"><AlertTriangle size={30} />{loading ? 'Loading incident information…' : 'Select an incident to inspect its response workflow.'}</section>
           )}
         </div>
-      </div>
-    </div>
+      </section>
+    </main>
   );
 }

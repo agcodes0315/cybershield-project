@@ -5,118 +5,187 @@ import {
   useState,
 } from 'react';
 
-const MAX_ALERTS = 50;
-const RECONNECT_DELAY_MS = 3000;
+const DEFAULT_PRODUCTION_WS_URL =
+  'wss://cybershield-api-gateway.niceforest-87cbfff3.centralindia.azurecontainerapps.io/ws';
 
-function createEventKey(event) {
+const MAX_ALERTS = 50;
+const MAX_RECONNECT_DELAY = 30000;
+const INITIAL_RECONNECT_DELAY = 3000;
+
+function getStoredToken() {
   return (
-    event.event_id ||
-    event.alert_id ||
-    event.scan_id ||
-    event.id ||
-    [
-      event.type,
-      event.url,
-      event.timestamp,
-      event.created_at,
-      event.message,
-    ]
-      .filter(Boolean)
-      .join('|')
+    localStorage.getItem('cybershield_token') ||
+    localStorage.getItem('token') ||
+    localStorage.getItem('access_token') ||
+    ''
   );
+}
+
+function getWebSocketBaseUrl() {
+  const configuredUrl =
+    import.meta.env.VITE_WS_URL?.trim();
+
+  if (configuredUrl) {
+    return configuredUrl.replace(/\/+$/, '');
+  }
+
+  if (
+    window.location.hostname === 'localhost' ||
+    window.location.hostname === '127.0.0.1'
+  ) {
+    return 'ws://127.0.0.1:5000/ws';
+  }
+
+  return DEFAULT_PRODUCTION_WS_URL;
+}
+
+function createSocketUrl(token) {
+  const baseUrl = getWebSocketBaseUrl();
+  const separator = baseUrl.includes('?') ? '&' : '?';
+
+  return `${baseUrl}${separator}token=${encodeURIComponent(
+    token,
+  )}`;
+}
+
+function normalizeMessage(rawData) {
+  if (typeof rawData !== 'string') {
+    return rawData;
+  }
+
+  try {
+    return JSON.parse(rawData);
+  } catch {
+    return {
+      type: 'message',
+      message: rawData,
+      received_at: new Date().toISOString(),
+    };
+  }
+}
+
+function shouldAddToAlerts(event) {
+  const eventType = String(
+    event?.type || event?.event_type || '',
+  ).toLowerCase();
+
+  return [
+    'threat_alert',
+    'scan_complete',
+    'incident_created',
+    'incident_updated',
+    'response_executed',
+    'vulnerability_detected',
+    'security_alert',
+  ].includes(eventType);
 }
 
 export default function useWebSocket() {
   const socketRef = useRef(null);
   const reconnectTimerRef = useRef(null);
-  const intentionallyClosedRef = useRef(false);
+  const reconnectAttemptsRef = useRef(0);
   const mountedRef = useRef(false);
-  const seenEventKeysRef = useRef(new Set());
+  const manualCloseRef = useRef(false);
+  const connectingRef = useRef(false);
 
   const [connected, setConnected] = useState(false);
+  const [connecting, setConnecting] = useState(false);
   const [alerts, setAlerts] = useState([]);
   const [lastEvent, setLastEvent] = useState(null);
+  const [error, setError] = useState('');
+  const [lastConnectedAt, setLastConnectedAt] =
+    useState(null);
 
   const clearReconnectTimer = useCallback(() => {
     if (reconnectTimerRef.current) {
-      window.clearTimeout(reconnectTimerRef.current);
+      clearTimeout(reconnectTimerRef.current);
       reconnectTimerRef.current = null;
     }
   }, []);
 
-  const addAlertOnce = useCallback((eventData) => {
-    const eventKey = createEventKey(eventData);
+  const closeSocket = useCallback(() => {
+    clearReconnectTimer();
+
+    const socket = socketRef.current;
 
     if (
-      eventKey &&
-      seenEventKeysRef.current.has(eventKey)
+      socket &&
+      (socket.readyState === WebSocket.OPEN ||
+        socket.readyState === WebSocket.CONNECTING)
     ) {
-      return;
+      manualCloseRef.current = true;
+      socket.close(1000, 'Client cleanup');
     }
 
-    if (eventKey) {
-      seenEventKeysRef.current.add(eventKey);
+    socketRef.current = null;
+    connectingRef.current = false;
+
+    if (mountedRef.current) {
+      setConnected(false);
+      setConnecting(false);
     }
-
-    setAlerts((previousAlerts) => {
-      const nextAlerts = [
-        eventData,
-        ...previousAlerts,
-      ].slice(0, MAX_ALERTS);
-
-      const retainedKeys = new Set(
-        nextAlerts
-          .map(createEventKey)
-          .filter(Boolean),
-      );
-
-      seenEventKeysRef.current = retainedKeys;
-
-      return nextAlerts;
-    });
-  }, []);
+  }, [clearReconnectTimer]);
 
   const connect = useCallback(() => {
     if (!mountedRef.current) {
       return;
     }
 
-    const token = localStorage.getItem('token');
+    const token = getStoredToken();
 
     if (!token) {
       setConnected(false);
+      setConnecting(false);
+      setError(
+        'WebSocket connection skipped because no authentication token was found.',
+      );
       return;
     }
 
-    const existingSocket = socketRef.current;
+    const currentSocket = socketRef.current;
 
     if (
-      existingSocket &&
-      (
-        existingSocket.readyState ===
-          WebSocket.OPEN ||
-        existingSocket.readyState ===
-          WebSocket.CONNECTING
-      )
+      currentSocket &&
+      (currentSocket.readyState === WebSocket.OPEN ||
+        currentSocket.readyState === WebSocket.CONNECTING)
     ) {
       return;
     }
 
+    if (connectingRef.current) {
+      return;
+    }
+
     clearReconnectTimer();
-    intentionallyClosedRef.current = false;
 
-    const protocol =
-      window.location.protocol === 'https:'
-        ? 'wss'
-        : 'ws';
+    manualCloseRef.current = false;
+    connectingRef.current = true;
 
-    const hostname = window.location.hostname;
+    setConnecting(true);
+    setError('');
 
-    const socketUrl =
-      `${protocol}://${hostname}:5000/ws` +
-      `?token=${encodeURIComponent(token)}`;
+    const socketUrl = createSocketUrl(token);
 
-    const socket = new WebSocket(socketUrl);
+    console.log(
+      '[WS] Connecting to:',
+      socketUrl.split('?token=')[0],
+    );
+
+    let socket;
+
+    try {
+      socket = new WebSocket(socketUrl);
+    } catch (connectionError) {
+      connectingRef.current = false;
+      setConnecting(false);
+      setConnected(false);
+      setError(
+        connectionError?.message ||
+          'Unable to create WebSocket connection.',
+      );
+      return;
+    }
+
     socketRef.current = socket;
 
     socket.onopen = () => {
@@ -125,8 +194,15 @@ export default function useWebSocket() {
         return;
       }
 
-      console.log('[WS] Connected');
+      reconnectAttemptsRef.current = 0;
+      connectingRef.current = false;
+
       setConnected(true);
+      setConnecting(false);
+      setError('');
+      setLastConnectedAt(new Date().toISOString());
+
+      console.log('[WS] Connected');
     };
 
     socket.onmessage = (messageEvent) => {
@@ -134,102 +210,186 @@ export default function useWebSocket() {
         return;
       }
 
-      try {
-        const eventData = JSON.parse(
-          messageEvent.data,
-        );
+      const event = normalizeMessage(messageEvent.data);
 
-        setLastEvent(eventData);
+      setLastEvent(event);
 
-        if (
-          eventData.type === 'threat_alert' ||
-          eventData.type === 'scan_complete'
-        ) {
-          addAlertOnce(eventData);
-        }
-      } catch (error) {
-        console.warn(
-          '[WS] Ignored invalid message:',
-          error,
-        );
+      if (shouldAddToAlerts(event)) {
+        setAlerts((previousAlerts) => [
+          event,
+          ...previousAlerts,
+        ].slice(0, MAX_ALERTS));
       }
     };
 
     socket.onerror = () => {
-      if (
-        socket.readyState === WebSocket.OPEN ||
-        socket.readyState ===
-          WebSocket.CONNECTING
-      ) {
-        socket.close();
+      if (!mountedRef.current) {
+        return;
       }
+
+      setError(
+        'The real-time security feed could not establish a connection.',
+      );
+
+      console.error('[WS] Connection error');
     };
 
-    socket.onclose = () => {
-      if (socketRef.current === socket) {
-        socketRef.current = null;
-      }
+    socket.onclose = (closeEvent) => {
+      socketRef.current = null;
+      connectingRef.current = false;
 
       if (!mountedRef.current) {
         return;
       }
 
       setConnected(false);
+      setConnecting(false);
 
-      if (intentionallyClosedRef.current) {
+      console.log(
+        '[WS] Disconnected',
+        closeEvent.code,
+        closeEvent.reason || '',
+      );
+
+      if (manualCloseRef.current) {
+        manualCloseRef.current = false;
         return;
       }
 
-      console.log('[WS] Disconnected');
+      const tokenStillExists = Boolean(getStoredToken());
 
-      clearReconnectTimer();
+      if (!tokenStillExists) {
+        setError(
+          'The real-time feed stopped because the authentication token is unavailable.',
+        );
+        return;
+      }
 
-      reconnectTimerRef.current =
-        window.setTimeout(() => {
-          reconnectTimerRef.current = null;
-          connect();
-        }, RECONNECT_DELAY_MS);
+      reconnectAttemptsRef.current += 1;
+
+      const reconnectDelay = Math.min(
+        INITIAL_RECONNECT_DELAY *
+          2 **
+            Math.min(
+              reconnectAttemptsRef.current - 1,
+              4,
+            ),
+        MAX_RECONNECT_DELAY,
+      );
+
+      setError(
+        `Real-time feed disconnected. Reconnecting in ${Math.round(
+          reconnectDelay / 1000,
+        )} seconds.`,
+      );
+
+      reconnectTimerRef.current = setTimeout(() => {
+        connect();
+      }, reconnectDelay);
     };
-  }, [addAlertOnce, clearReconnectTimer]);
+  }, [clearReconnectTimer]);
+
+  const reconnect = useCallback(() => {
+    manualCloseRef.current = true;
+    clearReconnectTimer();
+
+    const socket = socketRef.current;
+
+    if (socket) {
+      socket.close();
+      socketRef.current = null;
+    }
+
+    reconnectAttemptsRef.current = 0;
+    connectingRef.current = false;
+
+    setConnected(false);
+    setConnecting(false);
+    setError('');
+
+    setTimeout(() => {
+      if (mountedRef.current) {
+        connect();
+      }
+    }, 250);
+  }, [clearReconnectTimer, connect]);
+
+  const sendMessage = useCallback((payload) => {
+    const socket = socketRef.current;
+
+    if (!socket || socket.readyState !== WebSocket.OPEN) {
+      return false;
+    }
+
+    const message =
+      typeof payload === 'string'
+        ? payload
+        : JSON.stringify(payload);
+
+    socket.send(message);
+
+    return true;
+  }, []);
+
+  const clearAlerts = useCallback(() => {
+    setAlerts([]);
+  }, []);
 
   useEffect(() => {
     mountedRef.current = true;
-    intentionallyClosedRef.current = false;
 
     connect();
 
+    const handleStorageChange = (event) => {
+      if (
+        event.key === 'cybershield_token' ||
+        event.key === 'token' ||
+        event.key === 'access_token'
+      ) {
+        reconnect();
+      }
+    };
+
+    window.addEventListener(
+      'storage',
+      handleStorageChange,
+    );
+
     return () => {
       mountedRef.current = false;
-      intentionallyClosedRef.current = true;
+      manualCloseRef.current = true;
+
+      window.removeEventListener(
+        'storage',
+        handleStorageChange,
+      );
 
       clearReconnectTimer();
 
       const socket = socketRef.current;
-      socketRef.current = null;
 
       if (
         socket &&
-        (
-          socket.readyState === WebSocket.OPEN ||
-          socket.readyState ===
-            WebSocket.CONNECTING
-        )
+        (socket.readyState === WebSocket.OPEN ||
+          socket.readyState === WebSocket.CONNECTING)
       ) {
-        socket.close();
+        socket.close(1000, 'Component unmounted');
       }
-    };
-  }, [clearReconnectTimer, connect]);
 
-  const clearAlerts = useCallback(() => {
-    seenEventKeysRef.current.clear();
-    setAlerts([]);
-    setLastEvent(null);
-  }, []);
+      socketRef.current = null;
+      connectingRef.current = false;
+    };
+  }, [clearReconnectTimer, connect, reconnect]);
 
   return {
     connected,
+    connecting,
     alerts,
     lastEvent,
+    error,
+    lastConnectedAt,
+    reconnect,
     clearAlerts,
+    sendMessage,
   };
 }

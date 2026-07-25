@@ -1,48 +1,100 @@
-﻿const jwt = require("jsonwebtoken");
+﻿"use strict";
+
+const jwt = require("jsonwebtoken");
 const config = require("../config");
 
 function authenticate(req, res, next) {
+  const authHeader =
+    req.headers.authorization;
+
+  if (!authHeader) {
+    return res.status(401).json({
+      error: "Unauthorized: No token provided",
+      code: "TOKEN_MISSING",
+    });
+  }
+
+  const [scheme, token] =
+    authHeader.split(" ");
+
+  if (
+    scheme?.toLowerCase() !== "bearer" ||
+    !token
+  ) {
+    return res.status(401).json({
+      error:
+        "Unauthorized: Authorization header must use Bearer token",
+      code: "INVALID_AUTH_HEADER",
+    });
+  }
+
+  if (!config.jwtSecret) {
+    console.error(
+      "[AUTH ERROR] JWT_SECRET is not configured.",
+    );
+
+    return res.status(500).json({
+      error:
+        "Authentication service is not configured",
+      code: "JWT_SECRET_MISSING",
+    });
+  }
+
   try {
-    const authHeader = req.headers.authorization;
-
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return res.status(401).json({
-        error: "Unauthorized: No token provided",
-      });
-    }
-
-    const token = authHeader.slice(7).trim();
-
-    if (!token) {
-      return res.status(401).json({
-        error: "Unauthorized: No token provided",
-      });
-    }
-
-    const decoded = jwt.verify(token, config.jwtSecret);
+    const decoded = jwt.verify(
+      token.trim(),
+      config.jwtSecret,
+      {
+        algorithms: ["HS256"],
+      },
+    );
 
     req.user = decoded;
+
     return next();
   } catch (error) {
-    console.error("[AUTH ERROR]", error.message);
+    console.error(
+      "[AUTH ERROR]",
+      error.name,
+      error.message,
+    );
+
+    if (error.name === "TokenExpiredError") {
+      return res.status(401).json({
+        error:
+          "Unauthorized: Token has expired",
+        code: "TOKEN_EXPIRED",
+      });
+    }
 
     return res.status(401).json({
-      error: "Unauthorized: Invalid or expired token",
+      error:
+        "Unauthorized: Invalid token",
+      code: "TOKEN_INVALID",
     });
   }
 }
 
 function authorize(...allowedRoles) {
-  return function authorizeRole(req, res, next) {
+  return function authorizeRole(
+    req,
+    res,
+    next,
+  ) {
     if (!req.user) {
       return res.status(401).json({
         error: "Authentication required",
+        code: "AUTHENTICATION_REQUIRED",
       });
     }
 
-    if (!allowedRoles.includes(req.user.role)) {
+    if (
+      allowedRoles.length > 0 &&
+      !allowedRoles.includes(req.user.role)
+    ) {
       return res.status(403).json({
         error: "Insufficient permissions",
+        code: "INSUFFICIENT_PERMISSIONS",
       });
     }
 

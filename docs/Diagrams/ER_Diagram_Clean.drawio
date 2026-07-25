@@ -1,0 +1,54 @@
+<mxfile host="app.diagrams.net" agent="CyberShield-doc-gen">
+  <diagram name="Database ER Diagram" id="er1">
+    <mxGraphModel dx="1212" dy="620" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="900" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="roles" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;align=left;spacingLeft=8;verticalAlign=top;spacingTop=8;fontFamily=Helvetica;" value="&lt;b&gt;roles&lt;/b&gt;&lt;hr size=&quot;1&quot;&gt;PK  id&lt;br&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;name&lt;br&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;permission_bitmask" vertex="1">
+          <mxGeometry height="110" width="150" x="60" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="users" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#1a73e8;fontSize=12;align=left;spacingLeft=8;verticalAlign=top;spacingTop=8;fontFamily=Helvetica;" value="&lt;b&gt;users&lt;/b&gt;&lt;hr size=&quot;1&quot;&gt;PK  id&lt;br&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;email&lt;br&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;password_hash&lt;br&gt;FK  role_id  →  roles.id&lt;br&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;created_at" vertex="1">
+          <mxGeometry height="140" width="150" x="60" y="260" as="geometry" />
+        </mxCell>
+        <mxCell id="threat_entries" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#2d7d46;fontSize=12;align=left;spacingLeft=8;verticalAlign=top;spacingTop=8;fontFamily=Helvetica;" value="&lt;b&gt;threat_entries&lt;/b&gt;&lt;hr size=&quot;1&quot;&gt;PK  id&lt;br&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;type  (url / email)&lt;br&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;target&lt;br&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;risk_score&lt;br&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;source  (ml / feed / yara)&lt;br&gt;FK  scanned_by  →  users.id&lt;br&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;scanned_at" vertex="1">
+          <mxGeometry height="170" width="170" x="60" y="500" as="geometry" />
+        </mxCell>
+        <mxCell id="incidents" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#1a73e8;fontSize=12;align=left;spacingLeft=8;verticalAlign=top;spacingTop=8;fontFamily=Helvetica;" value="&lt;b&gt;incidents&lt;/b&gt;&lt;hr size=&quot;1&quot;&gt;PK  id&lt;br&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;source_module&lt;br&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;risk_score&lt;br&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;status  (detected…closed)&lt;br&gt;FK  threat_entry_id  →  threat_entries.id&lt;br&gt;FK  assigned_analyst_id  →  users.id&lt;br&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;created_at&lt;br&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;updated_at" vertex="1">
+          <mxGeometry height="200" width="220" x="510" y="220" as="geometry" />
+        </mxCell>
+        <mxCell id="audit_log" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;align=left;spacingLeft=8;verticalAlign=top;spacingTop=8;fontFamily=Helvetica;" value="&lt;b&gt;audit_log&lt;/b&gt;&lt;hr size=&quot;1&quot;&gt;PK  id&lt;br&gt;FK  incident_id  →  incidents.id&lt;br&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;actor&lt;br&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;action&lt;br&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;payload_hash&lt;br&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;prev_hash  (chain link)&lt;br&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;timestamp" vertex="1">
+          <mxGeometry height="170" width="180" x="920" y="140" as="geometry" />
+        </mxCell>
+        <mxCell id="responses" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#2d7d46;fontSize=12;align=left;spacingLeft=8;verticalAlign=top;spacingTop=8;fontFamily=Helvetica;" value="&lt;b&gt;responses&lt;/b&gt;&lt;hr size=&quot;1&quot;&gt;PK  id&lt;br&gt;FK  incident_id  →  incidents.id&lt;br&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;action_type&lt;br&gt;FK  executed_by  →  users.id&lt;br&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;status&lt;br&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;executed_at" vertex="1">
+          <mxGeometry height="150" width="180" x="920" y="480" as="geometry" />
+        </mxCell>
+        <mxCell id="e1000" edge="1" parent="1" source="roles" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#666666;strokeWidth=1.5;fontSize=11;jettySize=auto;orthogonalLoop=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="users" value="1 — N">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e1001" edge="1" parent="1" source="users" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#666666;strokeWidth=1.5;fontSize=11;jettySize=auto;orthogonalLoop=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="threat_entries" value="1 — N (scans)">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e1002" edge="1" parent="1" source="users" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#666666;strokeWidth=1.5;fontSize=11;jettySize=auto;orthogonalLoop=1;exitX=1;exitY=0.3;exitDx=0;exitDy=0;entryX=0;entryY=0.3;entryDx=0;entryDy=0;" target="incidents" value="1 — N (assigned)">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e1003" edge="1" parent="1" source="threat_entries" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#666666;strokeWidth=1.5;fontSize=11;jettySize=auto;orthogonalLoop=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.7;entryDx=0;entryDy=0;" target="incidents" value="1 — 0..1 (escalates to)">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e1004" edge="1" parent="1" source="incidents" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#666666;strokeWidth=1.5;fontSize=11;jettySize=auto;orthogonalLoop=1;exitX=1;exitY=0.25;exitDx=0;exitDy=0;entryX=0;entryY=0.3;entryDx=0;entryDy=0;" target="audit_log" value="1 — N">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e1005" edge="1" parent="1" source="incidents" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#666666;strokeWidth=1.5;fontSize=11;jettySize=auto;orthogonalLoop=1;exitX=1;exitY=0.75;exitDx=0;exitDy=0;entryX=0;entryY=0.7;entryDx=0;entryDy=0;" target="responses" value="1 — N">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e1006" edge="1" parent="1" source="users" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#666666;strokeWidth=1.5;fontSize=11;jettySize=auto;orthogonalLoop=1;exitX=1;exitY=0.9;exitDx=0;exitDy=0;entryX=0;entryY=0.9;entryDx=0;entryDy=0;" target="responses" value="1 — N (executes)">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="490" y="386" />
+              <mxPoint x="490" y="615" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -1,7 +1,6 @@
 import { NavLink } from 'react-router-dom';
+
 import {
-  Activity,
-  BarChart3,
   Bug,
   ChevronRight,
   CircleUserRound,
@@ -9,19 +8,16 @@ import {
   Fingerprint,
   Globe2,
   LayoutDashboard,
-  LifeBuoy,
   LockKeyhole,
   LogOut,
   MailSearch,
   Network,
-  RadioTower,
   Settings,
   Shield,
-  ShieldAlert,
   ShieldCheck,
-  Siren,
   TestTubeDiagonal,
   Users,
+  Workflow,
   X,
 } from 'lucide-react';
 
@@ -41,6 +37,11 @@ const navigationGroups = [
         label: 'Cyber Resilience',
         icon: ShieldCheck,
       },
+      {
+        to: '/response-orchestrator',
+        label: 'Response Orchestrator',
+        icon: Workflow,
+      },
     ],
   },
   {
@@ -55,6 +56,16 @@ const navigationGroups = [
         to: '/recon',
         label: 'Reconnaissance',
         icon: Globe2,
+      },
+      {
+        to: '/threat-intelligence',
+        label: 'Threat Intelligence',
+        icon: Shield,
+      },
+      {
+        to: '/mitre',
+        label: 'MITRE ATT&CK',
+        icon: Network,
       },
       {
         to: '/breach',
@@ -100,7 +111,10 @@ const navigationGroups = [
   },
 ];
 
-function SidebarLink({ item, onNavigate }) {
+function SidebarLink({
+  item,
+  onNavigate,
+}) {
   const Icon = item.icon;
 
   return (
@@ -108,14 +122,23 @@ function SidebarLink({ item, onNavigate }) {
       to={item.to}
       onClick={onNavigate}
       className={({ isActive }) =>
-        `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`
+        `sidebar-link ${
+          isActive
+            ? 'sidebar-link-active'
+            : ''
+        }`
       }
     >
       <span className="sidebar-link-icon">
-        <Icon size={17} strokeWidth={1.9} />
+        <Icon
+          size={17}
+          strokeWidth={1.9}
+        />
       </span>
 
-      <span className="sidebar-link-label">{item.label}</span>
+      <span className="sidebar-link-label">
+        {item.label}
+      </span>
 
       <ChevronRight
         className="sidebar-link-arrow"
@@ -138,16 +161,29 @@ export default function Sidebar({
   };
 
   const userInitial =
-    user?.username?.trim()?.charAt(0)?.toUpperCase() ||
-    user?.email?.trim()?.charAt(0)?.toUpperCase() ||
+    user?.username
+      ?.trim()
+      ?.charAt(0)
+      ?.toUpperCase() ||
+    user?.email
+      ?.trim()
+      ?.charAt(0)
+      ?.toUpperCase() ||
     'U';
+
+  const userDisplayName =
+    user?.username ||
+    user?.email?.split('@')?.[0] ||
+    'CyberShield User';
 
   return (
     <>
       <button
         type="button"
         className={`sidebar-overlay ${
-          mobileOpen ? 'sidebar-overlay-visible' : ''
+          mobileOpen
+            ? 'sidebar-overlay-visible'
+            : ''
         }`}
         onClick={onClose}
         aria-label="Close navigation"
@@ -155,12 +191,17 @@ export default function Sidebar({
 
       <aside
         className={`app-sidebar ${
-          mobileOpen ? 'app-sidebar-open' : ''
+          mobileOpen
+            ? 'app-sidebar-open'
+            : ''
         }`}
       >
         <div className="sidebar-brand">
           <div className="sidebar-brand-mark">
-            <Shield size={23} strokeWidth={2.2} />
+            <Shield
+              size={23}
+              strokeWidth={2.2}
+            />
           </div>
 
           <div className="sidebar-brand-copy">
@@ -187,12 +228,19 @@ export default function Sidebar({
           <div className="sidebar-status-heading">
             <span className="sidebar-status-indicator" />
 
-            <span>Platform operational</span>
+            <span>
+              Platform operational
+            </span>
           </div>
 
           <div className="sidebar-status-details">
-            <span>Detection systems online</span>
-            <strong>98%</strong>
+            <span>
+              Detection systems online
+            </span>
+
+            <strong>
+              98%
+            </strong>
           </div>
 
           <div className="sidebar-status-progress">
@@ -250,7 +298,7 @@ export default function Sidebar({
 
             <div className="sidebar-user-details">
               <div className="sidebar-user-name">
-                {user?.username || 'CyberShield User'}
+                {userDisplayName}
               </div>
 
               <div className="sidebar-user-role">
@@ -272,7 +320,9 @@ export default function Sidebar({
           >
             <LogOut size={16} />
 
-            <span>Sign out</span>
+            <span>
+              Sign out
+            </span>
           </button>
 
           <div className="sidebar-version">
