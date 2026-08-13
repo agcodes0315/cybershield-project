@@ -1,5 +1,5 @@
 # 🛡️ CyberShield
-### AI-Powered Security Operations Center (SOC) Platform for Critical National Infrastructure
+### AI-Assisted Security Operations Center (SOC) Platform for Critical Infrastructure
 
 ![React](https://img.shields.io/badge/React-20232A?style=flat&logo=react&logoColor=61DAFB)
 ![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=flat&logo=fastapi)
@@ -9,9 +9,9 @@
 ![Redis](https://img.shields.io/badge/Redis-DC382D?style=flat&logo=redis&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-green.svg)
 
-CyberShield is a production-inspired, AI-powered Security Operations Center (SOC) platform built to improve cyber resilience across Critical National Infrastructure (CNI) government, defence, healthcare, finance, transportation, and energy. It unifies threat intelligence, phishing detection, vulnerability prioritization, response orchestration, and MITRE ATT&CK mapping into a single operational dashboard.
+CyberShield is a production-inspired SOC platform built to improve cyber resilience across Critical National Infrastructure (CNI) sectors — government, defence, healthcare, finance, transportation, and energy. It unifies threat intelligence, phishing detection, vulnerability prioritization, response orchestration, attack-graph analysis, and MITRE ATT&CK mapping into a single operational dashboard.
 
-Built as a modular, cloud-ready platform, CyberShield demonstrates how modern SOCs use AI, automation and security analytics to cut incident response time and improve operational visibility while remaining approachable enough for learning, demonstration and portfolio use.
+Built as a modular, cloud-ready platform, CyberShield demonstrates how modern SOC architectures can combine ML-assisted analysis, automation, and security analytics to centralize investigations, reduce repetitive analyst workflows, and improve operational visibility, while remaining approachable enough for learning, demonstration, and portfolio use.
 
 ---
 
@@ -31,6 +31,7 @@ Built as a modular, cloud-ready platform, CyberShield demonstrates how modern SO
 - [Key Features](#-key-features)
 - [System Architecture](#️-system-architecture)
 - [Low-Level Design](#-low-level-design)
+- [Algorithm Engineering & Performance](#-algorithm-engineering--performance)
 - [Technology Stack](#-technology-stack)
 - [Implemented Modules](#-implemented-modules)
 - [AI Capabilities](#-ai-capabilities)
@@ -40,7 +41,7 @@ Built as a modular, cloud-ready platform, CyberShield demonstrates how modern SO
 - [Local Installation](#-local-installation)
 - [Environment Variables](#-environment-variables)
 - [Azure Deployment](#-azure-deployment)
-- [Testing Checklist](#-testing-checklist)
+- [Testing](#-testing)
 - [Known Limitations](#-known-limitations)
 - [Roadmap](#-roadmap-planned--not-yet-implemented)
 - [Author](#-author)
@@ -49,19 +50,21 @@ Built as a modular, cloud-ready platform, CyberShield demonstrates how modern SO
 
 ## 🌍 Overview
 
-Modern organizations rely on multiple disconnected security tools for phishing detection, vulnerability assessment, malware analysis, email investigation, and incident response. This fragmented approach leads to alert fatigue, slow investigations, high Mean Time to Detect (MTTD), high Mean Time to Respond (MTTR) and manual security operations.
+Modern organizations rely on multiple disconnected security tools for phishing detection, vulnerability assessment, malware analysis, email investigation, and incident response. This fragmented approach leads to alert fatigue, slow investigations, high Mean Time to Detect (MTTD), high Mean Time to Respond (MTTR), and manual security operations.
 
-CyberShield unifies these capabilities into a centralized Security Operations Center powered by AI and cloud-native architecture, resembling enterprise products like Microsoft Sentinel, Splunk Enterprise and CrowdStrike Falcon, purpose-built to be understandable, extensible and demo-ready.
+CyberShield unifies these capabilities into a centralized Security Operations Center, resembling enterprise products like Microsoft Sentinel, Splunk Enterprise, and CrowdStrike Falcon, purpose-built to be understandable, extensible, and demo-ready.
 
 ## Project Highlights
 
-- Full-stack SOC platform
-- React + Express + FastAPI architecture
-- MITRE ATT&CK mapping
-- AI-assisted phishing detection
-- Real-time WebSocket alerts
-- PostgreSQL + Redis backend
+- Full-stack SOC platform using React, Express.js, FastAPI, PostgreSQL, and Redis
+- Graph-based attack-path intelligence using BFS, DFS, and Dijkstra's algorithm
+- MITRE ATT&CK mapping and security-event correlation
+- ML-assisted phishing and URL threat analysis
+- Human-governed SOAR response workflows and hash-chained audit logging
+- Real-time WebSocket alerting
 - Azure cloud deployment
+- 140 automated unit and integration tests
+- Reproducible before/after benchmark for the critical-asset discovery optimization (see [Algorithm Engineering](#-algorithm-engineering--performance))
 
 | Component | Status |
 |-----------|--------|
@@ -73,15 +76,17 @@ CyberShield unifies these capabilities into a centralized Security Operations Ce
 
 ## 🎯 Problem Statement
 
-Critical National Infrastructure (CNI) sectors face increasingly sophisticated cyber attacks, yet traditional security stacks rely on isolated products and signature based detection.
+Critical National Infrastructure (CNI) sectors face increasingly sophisticated cyber attacks, yet traditional security stacks rely on isolated products and signature-based detection.
 
-CyberShield addresses this through AI-assisted threat intelligence, behaviour driven security analytics, automated response orchestration, vulnerability prioritization, cyber resilience assessment and cloud native SOC architecture.
+CyberShield addresses this through ML-assisted threat intelligence, behaviour-driven security analytics, automated response orchestration, vulnerability prioritization, attack-graph analysis, cyber resilience assessment, and cloud-native SOC architecture.
 
 ## ✨ Key Features
 
 **Security Operations** : SOC Command Center Dashboard, Real-time Security Monitoring, Threat Feed Dashboard, Analyst Workspace
 
-**Threat Intelligence** : AI URL Scanner, Email Header Analyzer, SPF/DKIM/DMARC Validation, Reconnaissance Engine, IP Reputation Analysis
+**Threat Intelligence** : ML-Assisted URL Scanner, Email Header Analyzer, SPF/DKIM/DMARC Validation, Reconnaissance Engine, IP Reputation Analysis
+
+**Attack Graph Intelligence** : Directed infrastructure graphs, minimum-hop BFS paths, lowest-cost Dijkstra paths, DFS blast-radius analysis, critical-asset discovery, containment simulation, and remediation prioritization
 
 **Vulnerability Management** : Vulnerability Prioritization, Context-aware Risk Scoring, Patch Prioritization, Asset Criticality Ranking
 
@@ -106,7 +111,7 @@ flowchart TD
 
     G --> AUTH[Authentication and RBAC]
     G --> P[(PostgreSQL)]
-    G --> R[(Redis — cache + queue)]
+    G --> R[(Redis)]
     G --> D[FastAPI Detection Engine]
 
     D --> ML[ML URL Detection]
@@ -114,6 +119,7 @@ flowchart TD
     D --> N[Recon and Network Analysis]
     D --> Y[YARA Rules]
     D --> T[Threat Feed Connectors]
+    D --> AG[Attack Graph Engine]
 
     T --> PT[PhishTank]
     T --> VT[VirusTotal]
@@ -131,9 +137,9 @@ flowchart TD
     G --> M[MITRE ATT&CK Mapping]
 ```
 
-**Service boundaries:** the React dashboard never talks to the detection engine directly — every request passes through the Express API gateway, which owns authentication and routing. Redis sits between the gateway and the FastAPI detection engine as both a response cache (for repeat URL/domain lookups) and a work queue (for longer-running scans like YARA and reconnaissance), so the gateway doesn't block on synchronous detection calls.
+**Service boundaries:** the React dashboard communicates with backend services through the Express API gateway, which owns authentication, routing, and access control. PostgreSQL provides persistent application storage, while Redis supports low-latency application state and caching where configured.
 
-**SOAR orchestrator placement:** low-risk findings (e.g., a URL scoring below the auto-remediation threshold) flow straight into the automated playbook path. Medium/high-risk findings are routed to the human approval gate before any playbook executes, the orchestrator never auto-executes anything above the configured risk threshold.
+**SOAR orchestrator placement:** low-risk findings (e.g., a URL scoring below the auto-remediation threshold) flow straight into the automated playbook path. Medium/high-risk findings are routed to the human approval gate before any playbook executes — the orchestrator never auto-executes anything above the configured risk threshold.
 
 **Real-time fan-out:** the Express gateway maintains a WebSocket connection per active analyst session. New incidents, playbook completions, and approval requests are pushed to all connected clients rather than polled, so the SOC dashboard reflects new findings within the same detection cycle.
 
@@ -150,7 +156,7 @@ flowchart TD
 | `users` | `id`, `email`, `password_hash`, `role_id` | Standard credential store, BCrypt-hashed |
 | `roles` | `id`, `name`, `permission_bitmask` | See RBAC table below |
 
-The hash-chained `audit_log` is what makes "immutable audit logging" a verifiable claim rather than a description, any row modified out-of-band fails the chain-verification check on next read.
+The hash-chained `audit_log` is what makes "immutable audit logging" a verifiable claim rather than a description — any row modified out-of-band fails the chain-verification check on next read.
 
 ### Incident state machine
 
@@ -185,6 +191,66 @@ Permissions are stored as a bitmask on `roles` and checked at the API gateway la
 
 ---
 
+## 🧮 Algorithm Engineering & Performance
+
+CyberShield models infrastructure assets and trust relationships as a directed, weighted graph using adjacency lists, reverse adjacency lists, hash maps, and sets.
+
+The attack-graph subsystem implements:
+
+- **BFS** for minimum-hop attack paths
+- **Dijkstra's algorithm** for lowest attacker-cost paths
+- **DFS** for blast-radius and compromise-reachability analysis
+- **Hash maps and sets** for constant-time-average asset and membership lookups
+- **Priority queues / heaps** for remediation ranking
+- **Adjacency lists** for memory-efficient graph representation
+
+### Critical-Asset Discovery Optimization
+
+The original implementation independently executed Dijkstra's algorithm for each critical asset. For `K` critical assets, the approximate complexity was:
+
+```text
+O(K × (V + E) log V)
+```
+
+The implementation was redesigned to perform a single-source shortest-path traversal combined with hash-set membership checks to identify the nearest critical asset instead. The optimized complexity is approximately:
+
+```text
+O((V + E) log V + K)
+```
+
+### Reproducible Benchmark
+
+Both implementations were benchmarked back-to-back in a single execution (commit `bcdbba4` before, commit `d6770ea` after), on the same machine, Python environment, and deterministic synthetic graph generator.
+
+| Metric | Before Optimization (`bcdbba4`) | After Optimization (`d6770ea`) |
+|---|---:|---:|
+| Graph nodes | 2,500 | 2,500 |
+| Graph edges | 10,000 | 10,000 |
+| Critical assets | 125 | 125 |
+| Mean latency | 2434.16 ms | 0.84 ms |
+| Median latency | 2461.10 ms | 0.83 ms |
+| P95 latency | 2582.02 ms | 0.90 ms |
+
+**Median critical-asset discovery latency dropped by approximately 99.97%, from ~2.46 s to ~0.83 ms.** Absolute timings vary by roughly 10–30% between benchmark sessions due to normal system-level factors (background load, cache state, interpreter startup); the reduction has been consistent across every independent run performed during development, and this table reflects the most complete paired session, run against the full test suite.
+
+The optimized implementation was validated against the complete automated test suite:
+
+```text
+140 passed
+```
+
+Reproducibility artifacts are available under:
+
+```text
+evaluation/
+├── benchmark_graph_algorithms.py
+├── graph_algorithm_benchmark_before.csv
+├── graph_algorithm_benchmark_after.csv
+└── graph_algorithm_verified_run.txt
+```
+
+---
+
 ## 🛠 Technology Stack
 
 | Layer | Stack |
@@ -193,17 +259,18 @@ Permissions are stored as a bitmask on `roles` and checked at the API gateway la
 | **API Gateway** | Node.js, Express, JWT Auth, Helmet, CORS, Rate Limiting, Morgan, WebSockets |
 | **Detection Engine** | Python, FastAPI, scikit-learn (Random Forest + Gradient Boosting), YARA, Nmap, WHOIS |
 | **Data Layer** | PostgreSQL, Redis |
-| **Cloud** | Microsoft Azure- Static Web Apps, Container Apps, Docker |
+| **Cloud** | Microsoft Azure — Static Web Apps, Container Apps, Docker |
 
 ## 📂 Implemented Modules
 
 | Module | Description |
 |---|---|
 | SOC Dashboard | Centralized Security Operations Dashboard |
-| URL Scanner | AI-assisted phishing URL detection |
+| URL Scanner | ML-assisted phishing URL detection |
 | Email Analyzer | Email authentication and spoofing analysis |
 | Reconnaissance | Domain intelligence and attack surface discovery |
 | MITRE ATT&CK Mapping | Keyword-based technique/tactic mapping with coverage, confidence, and source aggregation |
+| Attack Graph Intelligence | BFS/Dijkstra attack paths, DFS blast-radius analysis, critical-asset discovery, and containment simulation |
 | Breach Checker | Credential exposure verification |
 | Pen Testing | Controlled vulnerability assessment |
 | YARA Scanner | Malware detection using YARA rules |
@@ -248,9 +315,26 @@ CyberShield/
 │
 ├── detection-engine/
 │   ├── app/
+│   │   ├── attack_graph/
+│   │   │   ├── graph.py
+│   │   │   ├── pathfinder.py
+│   │   │   ├── blast_radius.py
+│   │   │   └── remediation.py
+│   │   └── ...
 │   ├── models/
 │   ├── rules/
 │   └── requirements.txt
+│
+├── tests/
+│   ├── unit/
+│   ├── integration/
+│   └── scenarios/
+│
+├── evaluation/
+│   ├── benchmark_graph_algorithms.py
+│   ├── graph_algorithm_benchmark_before.csv
+│   ├── graph_algorithm_benchmark_after.csv
+│   └── graph_algorithm_verified_run.txt
 │
 ├── docker-compose.yml
 └── README.md
@@ -326,7 +410,7 @@ GET  /api/resilience/audit/verify
 ```
 </details>
 
-FastAPI also auto-generates interactive docs at `/docs`, covering URL Analysis, Email Analysis, Reconnaissance, Vulnerability Prioritization, Response Orchestration, Audit and Cyber Resilience.
+FastAPI also auto-generates interactive docs at `/docs`, covering URL Analysis, Email Analysis, Reconnaissance, Vulnerability Prioritization, Response Orchestration, Audit, and Cyber Resilience.
 
 ---
 
@@ -421,7 +505,33 @@ Also verify HTTPS, WSS WebSocket connectivity, CORS, authentication, database co
 
 ---
 
-## 🧪 Testing Checklist
+## 🧪 Testing
+
+CyberShield includes automated unit and integration coverage across attack-graph analysis, event correlation, prediction, UEBA, incident response, audit integrity, and API workflows.
+
+Latest verified run:
+
+```text
+140 passed
+```
+
+Coverage includes:
+
+- BFS minimum-hop path discovery
+- Dijkstra lowest-cost attack paths
+- DFS blast-radius analysis
+- Hash-map entity indexing
+- Critical-asset discovery
+- Remediation ranking
+- MITRE ATT&CK mapping
+- Event correlation
+- UEBA anomaly detection
+- Prediction workflows
+- Response approvals and execution
+- Hash-chain audit integrity
+- Integration API workflows
+
+### Manual deployment checklist
 
 - [ ] User registration & login/logout
 - [ ] Protected routes
@@ -441,26 +551,27 @@ Also verify HTTPS, WSS WebSocket connectivity, CORS, authentication, database co
 
 ## ⚠️ Known Limitations
 
-- MITRE mapping currently uses keyword-based classification, not a full ATTACK Navigator integration
+- MITRE mapping currently uses keyword-based classification, not a full ATT&CK Navigator integration
 - Threat-feed diversity depends on configured provider API keys
 - Some external integrations require paid or rate-limited API keys
 - Network scanning may be restricted in managed cloud environments
 - Production WebSocket behaviour depends on proxy and container configuration
+- The Redis queue path has not yet been independently verified end-to-end; current wording describes it as supporting low-latency state/caching rather than asserting a specific queue architecture
 
 ---
 
 ## 🗺 Roadmap (planned — not yet implemented)
 
-The items below are design targets, not shipped features. Each has a short blueprint so the design thinking is visible even before the code lands, none of this is represented as built.
+The items below are design targets, not shipped features. Each has a short blueprint so the design thinking is visible even before the code lands — none of this is represented as built.
 
 | Enhancement | Design direction |
 |---|---|
-| **MITRE ATT&CK Navigator-style Heatmap** | The existing keyword-based mapping already surfaces coverage, technique, and tactic counts, this extends it into an interactive Navigator-style heatmap on the incident detail view, so an analyst sees *which stage of an attack chain* a finding belongs to at a glance, not just a raw score |
+| **MITRE ATT&CK Navigator-style Heatmap** | The existing keyword-based mapping already surfaces coverage, technique, and tactic counts; this extends it into an interactive Navigator-style heatmap on the incident detail view, so an analyst sees *which stage of an attack chain* a finding belongs to at a glance, not just a raw score |
 | **Behavioural Analytics Dashboard** | Baseline per-asset normal behaviour over a rolling window; flag deviations as anomaly scores feeding the existing risk-scoring pipeline |
 | **SIEM Integration** | Expose a normalized event stream (CEF/JSON over Syslog) from the `audit_log` table so CyberShield can sit alongside Splunk/Sentinel as a source |
 | **Threat Actor Attribution** | Correlate IOC patterns against open threat-intel feeds to suggest — not assert — likely actor clusters, as a confidence-scored hint |
 | **Kubernetes Deployment** | Migrate the detection engine and gateway to AKS with autoscaling keyed on Redis queue depth |
-| **Graph-based Attack Path Analysis** | Model assets and trust relationships as a graph, compute shortest attack paths to prioritize which vulnerability matters most |
+| **Attack-Graph Persistence & Historical Analysis** | Persist graph snapshots and attack-path changes over time to support historical investigation and trend analysis |
 | **AI Security Copilot** | LLM-backed assistant scoped to read-only queries against the incident/audit schema, restricted to the same RBAC model as human analysts |
 | **Real-time Streaming Analytics** | Replace Redis-as-queue with Kafka/Azure Event Hubs once incident volume exceeds single-instance buffering |
 

@@ -5,11 +5,11 @@ ENV PORT=5000
 
 WORKDIR /app
 
-COPY api-gateway/package.json api-gateway/package-lock.json ./
+COPY package.json package-lock.json ./
 
 RUN npm ci --omit=dev
 
-COPY api-gateway/ ./
+COPY . .
 
 RUN chown -R node:node /app
 
