@@ -6,7 +6,6 @@ from math import inf
 
 from .graph import AttackGraph
 from .schemas import (
-    AssetCriticality,
     AttackGraphEdge,
     AttackPathResult,
     AttackPathStep,
@@ -22,10 +21,16 @@ class AttackPathfinder:
     Algorithms:
     - BFS finds the path with the fewest hops.
     - Dijkstra finds the path with the lowest attacker cost.
+    - Optimized nearest-critical-asset search performs a single
+      traversal instead of rerunning the path algorithm for each
+      critical asset.
 
     Complexity:
     - BFS: O(V + E)
     - Dijkstra: O((V + E) log V)
+    - Nearest critical asset with BFS: O(V + E)
+    - Nearest critical asset with Dijkstra:
+      O((V + E) log V)
     """
 
     def __init__(
@@ -33,6 +38,10 @@ class AttackPathfinder:
         graph: AttackGraph,
     ) -> None:
         self.graph = graph
+
+    # ============================================================
+    # BFS
+    # ============================================================
 
     def shortest_hop_path(
         self,
@@ -92,6 +101,10 @@ class AttackPathfinder:
             target_id=target_id,
             algorithm=PathAlgorithm.BFS,
         )
+
+    # ============================================================
+    # DIJKSTRA
+    # ============================================================
 
     def lowest_resistance_path(
         self,
@@ -191,6 +204,10 @@ class AttackPathfinder:
             algorithm=PathAlgorithm.DIJKSTRA,
         )
 
+    # ============================================================
+    # OPTIMIZED NEAREST CRITICAL ASSET
+    # ============================================================
+
     def nearest_critical_asset(
         self,
         source_id: str,
@@ -211,26 +228,7 @@ class AttackPathfinder:
             )
         ]
 
-        candidate_paths: list[
-            AttackPathResult
-        ] = []
-
-        for node in critical_nodes:
-            if algorithm == PathAlgorithm.BFS:
-                result = self.shortest_hop_path(
-                    source_id,
-                    node.node_id,
-                )
-            else:
-                result = self.lowest_resistance_path(
-                    source_id,
-                    node.node_id,
-                )
-
-            if result.found:
-                candidate_paths.append(result)
-
-        if not candidate_paths:
+        if not critical_nodes:
             return CriticalAssetPathResult(
                 source_id=source_id,
                 target_id=None,
@@ -238,45 +236,218 @@ class AttackPathfinder:
                 target_criticality=None,
                 algorithm=algorithm,
                 path=None,
-                searched_target_count=len(
-                    critical_nodes
-                ),
+                searched_target_count=0,
             )
 
         if algorithm == PathAlgorithm.BFS:
-            best_path = min(
-                candidate_paths,
-                key=lambda path: (
-                    path.hop_count,
-                    path.total_cost,
-                    path.target_id,
-                ),
-            )
-        else:
-            best_path = min(
-                candidate_paths,
-                key=lambda path: (
-                    path.total_cost,
-                    path.hop_count,
-                    path.target_id,
-                ),
+            return self._nearest_critical_asset_bfs(
+                source_id=source_id,
+                critical_nodes=critical_nodes,
             )
 
-        target = self.graph.require_node(
-            best_path.target_id
+        return self._nearest_critical_asset_dijkstra(
+            source_id=source_id,
+            critical_nodes=critical_nodes,
         )
+
+    def _nearest_critical_asset_bfs(
+        self,
+        source_id: str,
+        critical_nodes: list,
+    ) -> CriticalAssetPathResult:
+        critical_ids = {
+            node.node_id
+            for node in critical_nodes
+        }
+
+        queue: deque[str] = deque([source_id])
+        visited: set[str] = {source_id}
+
+        predecessor: dict[
+            str,
+            tuple[str, AttackGraphEdge],
+        ] = {}
+
+        while queue:
+            current_id = queue.popleft()
+
+            for relationship in self.graph.neighbours(
+                current_id,
+                enabled_only=True,
+            ):
+                neighbour_id = (
+                    relationship.node.node_id
+                )
+
+                if neighbour_id in visited:
+                    continue
+
+                visited.add(neighbour_id)
+
+                predecessor[neighbour_id] = (
+                    current_id,
+                    relationship.edge,
+                )
+
+                if neighbour_id in critical_ids:
+                    path = self._build_result(
+                        source_id=source_id,
+                        target_id=neighbour_id,
+                        predecessor=predecessor,
+                        algorithm=PathAlgorithm.BFS,
+                    )
+
+                    target = self.graph.require_node(
+                        neighbour_id
+                    )
+
+                    return CriticalAssetPathResult(
+                        source_id=source_id,
+                        target_id=neighbour_id,
+                        found=True,
+                        target_criticality=target.criticality,
+                        algorithm=PathAlgorithm.BFS,
+                        path=path,
+                        searched_target_count=len(
+                            critical_nodes
+                        ),
+                    )
+
+                queue.append(neighbour_id)
 
         return CriticalAssetPathResult(
             source_id=source_id,
-            target_id=best_path.target_id,
-            found=True,
-            target_criticality=target.criticality,
-            algorithm=algorithm,
-            path=best_path,
+            target_id=None,
+            found=False,
+            target_criticality=None,
+            algorithm=PathAlgorithm.BFS,
+            path=None,
             searched_target_count=len(
                 critical_nodes
             ),
         )
+
+    def _nearest_critical_asset_dijkstra(
+        self,
+        source_id: str,
+        critical_nodes: list,
+    ) -> CriticalAssetPathResult:
+        critical_ids = {
+            node.node_id
+            for node in critical_nodes
+        }
+
+        distances: dict[str, float] = {
+            node.node_id: inf
+            for node in self.graph.nodes()
+        }
+
+        distances[source_id] = 0.0
+
+        predecessor: dict[
+            str,
+            tuple[str, AttackGraphEdge],
+        ] = {}
+
+        priority_queue: list[
+            tuple[float, str]
+        ] = [
+            (0.0, source_id)
+        ]
+
+        visited: set[str] = set()
+
+        while priority_queue:
+            current_cost, current_id = (
+                heapq.heappop(
+                    priority_queue
+                )
+            )
+
+            if current_id in visited:
+                continue
+
+            visited.add(current_id)
+
+            if (
+                current_id != source_id
+                and current_id in critical_ids
+            ):
+                path = self._build_result(
+                    source_id=source_id,
+                    target_id=current_id,
+                    predecessor=predecessor,
+                    algorithm=PathAlgorithm.DIJKSTRA,
+                )
+
+                target = self.graph.require_node(
+                    current_id
+                )
+
+                return CriticalAssetPathResult(
+                    source_id=source_id,
+                    target_id=current_id,
+                    found=True,
+                    target_criticality=target.criticality,
+                    algorithm=PathAlgorithm.DIJKSTRA,
+                    path=path,
+                    searched_target_count=len(
+                        critical_nodes
+                    ),
+                )
+
+            for relationship in self.graph.neighbours(
+                current_id,
+                enabled_only=True,
+            ):
+                neighbour_id = (
+                    relationship.node.node_id
+                )
+                edge = relationship.edge
+
+                candidate_cost = (
+                    current_cost
+                    + edge.attacker_cost
+                )
+
+                if (
+                    candidate_cost
+                    >= distances[neighbour_id]
+                ):
+                    continue
+
+                distances[neighbour_id] = (
+                    candidate_cost
+                )
+
+                predecessor[neighbour_id] = (
+                    current_id,
+                    edge,
+                )
+
+                heapq.heappush(
+                    priority_queue,
+                    (
+                        candidate_cost,
+                        neighbour_id,
+                    ),
+                )
+
+        return CriticalAssetPathResult(
+            source_id=source_id,
+            target_id=None,
+            found=False,
+            target_criticality=None,
+            algorithm=PathAlgorithm.DIJKSTRA,
+            path=None,
+            searched_target_count=len(
+                critical_nodes
+            ),
+        )
+
+    # ============================================================
+    # RESTORED: ALL REACHABLE CRITICAL PATHS
+    # ============================================================
 
     def all_reachable_critical_paths(
         self,
@@ -326,6 +497,10 @@ class AttackPathfinder:
             ),
         )
 
+    # ============================================================
+    # RESULT CONSTRUCTION
+    # ============================================================
+
     def _build_result(
         self,
         source_id: str,
@@ -366,12 +541,19 @@ class AttackPathfinder:
             current_id = previous_id
 
         node_ids.reverse()
-        edges = list(reversed(edges_reversed))
+        edges = list(
+            reversed(edges_reversed)
+        )
 
-        steps: list[AttackPathStep] = []
+        steps: list[
+            AttackPathStep
+        ] = []
+
         controls: set[str] = set()
 
-        node_risk_values: list[float] = []
+        node_risk_values: list[
+            float
+        ] = []
 
         total_resistance = 0.0
         total_cost = 0.0
@@ -399,25 +581,28 @@ class AttackPathfinder:
                         edge_resistance=None,
                         edge_trust_level=None,
                         edge_cost=None,
-                        node_risk_score=(
-                            node.risk_score
-                        ),
+                        node_risk_score=node.risk_score,
                         controls=[],
                     )
                 )
 
                 continue
 
-            edge = edges[index - 1]
+            edge = edges[
+                index - 1
+            ]
 
             total_resistance += (
                 edge.resistance
             )
+
             total_cost += (
                 edge.attacker_cost
             )
 
-            controls.update(edge.controls)
+            controls.update(
+                edge.controls
+            )
 
             steps.append(
                 AttackPathStep(
@@ -452,8 +637,10 @@ class AttackPathfinder:
             else 0.0
         )
 
-        target_node = self.graph.require_node(
-            target_id
+        target_node = (
+            self.graph.require_node(
+                target_id
+            )
         )
 
         target_impact = (
@@ -467,9 +654,14 @@ class AttackPathfinder:
 
         path_risk_score = min(
             (
-                0.40 * average_node_risk
-                + 0.35 * target_impact
-                + 0.25 * ease_of_traversal
+                0.40
+                * average_node_risk
+
+                + 0.35
+                * target_impact
+
+                + 0.25
+                * ease_of_traversal
             ),
             1.0,
         )
@@ -507,6 +699,10 @@ class AttackPathfinder:
             explanation=explanation,
         )
 
+    # ============================================================
+    # SOURCE == TARGET
+    # ============================================================
+
     def _single_node_result(
         self,
         source_id: str,
@@ -525,7 +721,9 @@ class AttackPathfinder:
             total_resistance=0.0,
             total_cost=0.0,
             path_risk_score=node.risk_score,
-            node_ids=[source_id],
+            node_ids=[
+                source_id
+            ],
             steps=[
                 AttackPathStep(
                     step_number=0,
@@ -548,6 +746,10 @@ class AttackPathfinder:
                 "Source and target are the same node."
             ),
         )
+
+    # ============================================================
+    # NOT FOUND
+    # ============================================================
 
     @staticmethod
     def _not_found_result(
