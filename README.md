@@ -837,14 +837,72 @@ CyberShield is intended for:
 
 Only run reconnaissance, scanning, or security-testing functionality against systems you own or have explicit permission to assess.
 
+<div align="center">
+
 ## 👩‍💻 Author
 
-**Agrima Saxena**
+### Agrima Saxena
 
-Software Engineering · Applied AI · Cybersecurity
+**Software Engineering · Applied AI · Cybersecurity**
 
-[LinkedIn](https://www.linkedin.com/in/agrima-saxena-142960426/) ·
-[GitHub](https://github.com/agrima08s010315) ·
-[Email](mailto:agrimalc@gmail.com)
+<br>
 
-⭐ If the project interests you, feel free to explore the architecture, benchmark the graph engine, or review the implementation.
+<table align="center">
+<tr>
+
+<td align="center" width="70">
+<a href="https://www.linkedin.com/in/agrima-saxena-142960426/" title="LinkedIn">
+<img src="https://img.icons8.com/color/48/linkedin.png"
+     width="34"
+     height="34"
+     alt="LinkedIn"/>
+</a>
+</td>
+
+<td align="center" width="70">
+<a href="mailto:agrimalc@gmail.com" title="Email">
+<img src="https://img.icons8.com/color/48/gmail-new.png"
+     width="34"
+     height="34"
+     alt="Email"/>
+</a>
+</td>
+
+<td align="center" width="70">
+<a href="https://github.com/agrima08s010315" title="GitHub">
+<img src="https://img.icons8.com/ios-glyphs/48/ffffff/github.png"
+     width="34"
+     height="34"
+     alt="GitHub"/>
+</a>
+</td>
+
+</tr>
+</table>
+
+<br>
+
+<a href="https://mango-pebble-099d8de00.7.azurestaticapps.net/">
+<img src="https://img.shields.io/badge/Live%20Demo-Open%20CyberShield-0078D4?style=for-the-badge&logo=microsoftazure&logoColor=white"
+     alt="CyberShield Live Demo"/>
+</a>
+
+&nbsp;
+
+<a href="https://github.com/agrima08s010315/cybershield-project">
+<img src="https://img.shields.io/badge/GitHub-View%20Repository-181717?style=for-the-badge&logo=github&logoColor=white"
+     alt="CyberShield Repository"/>
+</a>
+
+<br><br>
+
+<a href="https://github.com/agrima08s010315/cybershield-project/stargazers">
+<img src="https://img.shields.io/github/stars/agrima08s010315/cybershield-project?style=for-the-badge&logo=github&label=Star%20CyberShield"
+     alt="Star CyberShield"/>
+</a>
+
+<br><br>
+
+⭐ **If CyberShield helped you learn something or you found the engineering interesting, consider starring the repository.**
+
+</div>
