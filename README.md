@@ -837,8 +837,6 @@ CyberShield is intended for:
 
 Only run reconnaissance, scanning, or security-testing functionality against systems you own or have explicit permission to assess.
 
-<div align="center">
-
 ## 👩‍💻 Author
 
 ### Agrima Saxena
@@ -847,62 +845,50 @@ Only run reconnaissance, scanning, or security-testing functionality against sys
 
 <br>
 
-<table align="center">
-<tr>
+<table>
+  <tr>
+    <td width="60">
+      <a href="https://www.linkedin.com/in/agrima-saxena-142960426/" title="LinkedIn">
+        <img src="https://img.icons8.com/color/48/linkedin.png"
+             width="34"
+             height="34"
+             alt="LinkedIn"/>
+      </a>
+    </td>
 
-<td align="center" width="70">
-<a href="https://www.linkedin.com/in/agrima-saxena-142960426/" title="LinkedIn">
-<img src="https://img.icons8.com/color/48/linkedin.png"
-     width="34"
-     height="34"
-     alt="LinkedIn"/>
-</a>
-</td>
+    <td width="60">
+      <a href="mailto:agrimalc@gmail.com" title="Email">
+        <img src="https://img.icons8.com/color/48/gmail-new.png"
+             width="34"
+             height="34"
+             alt="Email"/>
+      </a>
+    </td>
 
-<td align="center" width="70">
-<a href="mailto:agrimalc@gmail.com" title="Email">
-<img src="https://img.icons8.com/color/48/gmail-new.png"
-     width="34"
-     height="34"
-     alt="Email"/>
-</a>
-</td>
-
-<td align="center" width="70">
-<a href="https://github.com/agrima08s010315" title="GitHub">
-<img src="https://img.icons8.com/ios-glyphs/48/ffffff/github.png"
-     width="34"
-     height="34"
-     alt="GitHub"/>
-</a>
-</td>
-
-</tr>
+    <td width="60">
+      <a href="https://github.com/agrima08s010315" title="GitHub">
+        <img src="https://img.icons8.com/ios-glyphs/48/ffffff/github.png"
+             width="34"
+             height="34"
+             alt="GitHub"/>
+      </a>
+    </td>
+  </tr>
 </table>
 
 <br>
 
 <a href="https://mango-pebble-099d8de00.7.azurestaticapps.net/">
-<img src="https://img.shields.io/badge/Live%20Demo-Open%20CyberShield-0078D4?style=for-the-badge&logo=microsoftazure&logoColor=white"
-     alt="CyberShield Live Demo"/>
+  <img src="https://img.shields.io/badge/Live%20Demo-Open%20CyberShield-0078D4?style=flat-square&logo=microsoftazure&logoColor=white"
+       alt="CyberShield Live Demo"/>
 </a>
-
-&nbsp;
 
 <a href="https://github.com/agrima08s010315/cybershield-project">
-<img src="https://img.shields.io/badge/GitHub-View%20Repository-181717?style=for-the-badge&logo=github&logoColor=white"
-     alt="CyberShield Repository"/>
+  <img src="https://img.shields.io/badge/GitHub-View%20Repository-181717?style=flat-square&logo=github&logoColor=white"
+       alt="CyberShield Repository"/>
 </a>
 
 <br><br>
 
-<a href="https://github.com/agrima08s010315/cybershield-project/stargazers">
-<img src="https://img.shields.io/github/stars/agrima08s010315/cybershield-project?style=for-the-badge&logo=github&label=Star%20CyberShield"
-     alt="Star CyberShield"/>
-</a>
+⭐ **If you found CyberShield useful or interesting, consider starring the repository.**
 
-<br><br>
-
-⭐ **If CyberShield helped you learn something or you found the engineering interesting, consider starring the repository.**
-
-</div>
