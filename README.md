@@ -1,165 +1,238 @@
 # 🛡️ CyberShield
 
-## AI-Assisted Security Operations Center Platform
+### AI-Assisted Security Operations Center Platform for Critical Infrastructure
 
-CyberShield is a full-stack SOC platform designed to bring **threat intelligence, phishing detection, attack-graph analysis, vulnerability prioritization, MITRE ATT&CK mapping, incident response, and analyst-governed remediation** into one operational workflow.
+CyberShield is a full-stack security operations platform that brings together **threat intelligence, phishing detection, vulnerability prioritization, attack-graph analysis, incident response, MITRE ATT&CK mapping, and analyst-governed remediation** in one workflow.
 
-It is built as a modular, cloud-ready system using **React, Express.js, FastAPI, PostgreSQL, Redis, WebSockets, and Azure**.
+Built with **React, Node.js, FastAPI, PostgreSQL, Redis, WebSockets, and Azure**, the project focuses on both security functionality and the engineering behind it: service boundaries, graph algorithms, performance optimization, testing, auditability, and cloud deployment.
 
-[![Live Demo](https://img.shields.io/badge/Live%20Demo-CyberShield-0078D4?style=flat-square&logo=microsoftazure&logoColor=white)](https://mango-pebble-099d8de00.7.azurestaticapps.net/)
-[![Repository](https://img.shields.io/badge/GitHub-Source%20Code-181717?style=flat-square&logo=github&logoColor=white)](https://github.com/agrima08s010315/cybershield-project)
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-Azure-0078D4?style=flat-square&logo=microsoftazure&logoColor=white)](https://mango-pebble-099d8de00.7.azurestaticapps.net/)
+[![Repository](https://img.shields.io/badge/GitHub-Repository-181717?style=flat-square&logo=github&logoColor=white)](https://github.com/agrima08s010315/cybershield-project)
 ![Tests](https://img.shields.io/badge/Tests-140%20Passing-2EA44F?style=flat-square&logo=pytest&logoColor=white)
-![License](https://img.shields.io/badge/License-MIT-22c55e?style=flat-square)
+![React](https://img.shields.io/badge/React-20232A?style=flat-square&logo=react&logoColor=61DAFB)
+![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=flat-square&logo=fastapi&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=flat-square&logo=postgresql&logoColor=white)
+![Azure](https://img.shields.io/badge/Azure-0078D4?style=flat-square&logo=microsoftazure&logoColor=white)
 
-## 🚀 Why This Project
+## 🚀 What CyberShield Does
 
-Modern security teams work across many disconnected tools for phishing analysis, threat feeds, vulnerability assessment, malware detection, network reconnaissance, and response.
+Modern security teams often rely on separate tools for phishing analysis, threat intelligence, vulnerability management, malware inspection, attack-path analysis, and incident response.
 
-CyberShield explores what that workflow looks like when these capabilities are brought together into one system.
+CyberShield connects those workflows into a single SOC-style platform.
 
-The platform focuses on:
+An analyst can:
 
-- centralized security operations
-- attack-path reasoning
-- real-time analyst visibility
-- response governance
-- measurable algorithm performance
-- auditability
-- modular service architecture
+- inspect suspicious URLs, domains, IPs, and email headers
+- analyze infrastructure attack paths
+- map findings to MITRE ATT&CK
+- prioritize vulnerable or critical assets
+- investigate YARA and IOC matches
+- receive real-time WebSocket alerts
+- review recommended response actions
+- approve high-risk remediation manually
+- verify the complete incident history through an audit trail
 
-## ✨ Engineering Highlights
+The goal is not to replicate an enterprise SIEM product feature-for-feature. The project instead explores how the core pieces of a modern security operations platform can be designed and connected in one understandable system.
 
-- Built a multi-service SOC platform using **React, Express.js, FastAPI, PostgreSQL, and Redis**
-- Implemented attack-graph intelligence using **BFS, DFS, and Dijkstra's algorithm**
-- Reworked critical-asset discovery to reduce median benchmark latency from **~2.46 s to ~0.83 ms**
-- Achieved an approximate **99.97% reduction in median latency** in the recorded benchmark
-- Benchmarked against a deterministic **2,500-node / 10,000-edge synthetic attack graph**
-- Maintained **140 passing automated unit and integration tests**
-- Added real-time security updates using **WebSockets**
-- Integrated **YARA, SSL/WHOIS analysis, threat feeds, and MITRE ATT&CK mapping**
-- Added analyst-controlled response workflows and hash-chained audit records
-- Deployed the frontend and backend services on **Microsoft Azure**
+## 📊 Engineering Highlights
 
-## 🧩 Core Capabilities
-
-| Area | What CyberShield Does |
+| Area | Result |
 |---|---|
-| SOC Operations | Central dashboard, security monitoring, analyst workspace |
-| Threat Intelligence | URL analysis, email analysis, IP/domain reputation, threat feeds |
-| Attack Graphs | BFS, DFS, Dijkstra, blast radius, critical-asset discovery |
-| Vulnerability Management | Risk scoring, prioritization, asset criticality |
-| Malware Analysis | YARA rule scanning and IOC matching |
-| Response | Human approval, automated low-risk playbooks, action history |
-| MITRE ATT&CK | Technique and tactic mapping |
-| Cyber Resilience | Event correlation, risk context, resilience analysis |
-| Collaboration | Shared threat intelligence and analyst workflows |
+| Graph optimization | **~99.97% lower median latency** |
+| Before optimization | **2461.10 ms** |
+| After optimization | **0.83 ms** |
+| Benchmark graph | **2,500 nodes / 10,000 edges** |
+| Critical assets | **125** |
+| Automated tests | **140 passing** |
+| Realtime updates | **WebSockets** |
+| Cloud deployment | **Microsoft Azure** |
+| Response model | **Human approval for higher-risk actions** |
+
+## 🧩 Why This Project Matters
+
+Security platforms are not only about detecting threats.
+
+A useful SOC platform must also answer:
+
+- What systems are affected?
+- How can an attacker move through the environment?
+- Which assets matter most?
+- Which findings should be handled first?
+- What remediation is safe to automate?
+- Which action requires a human decision?
+- Can the organization reconstruct what happened later?
+
+CyberShield was built around those questions.
 
 ## 🏗️ System Architecture
 
-CyberShield follows a multi-service architecture.
+CyberShield uses a multi-service architecture.
 
-The **React frontend** communicates with an **Express API Gateway**, which handles authentication, authorization, routing, and API controls.
+The React frontend communicates with the Express API gateway. The gateway handles authentication, authorization, routing, rate limiting, and access control. Analysis workloads are handled by the FastAPI detection engine.
 
-The **FastAPI detection engine** handles analysis workloads.
+PostgreSQL stores persistent application state. Redis is used for low-latency state and caching where configured. WebSockets provide real-time analyst updates.
 
-**PostgreSQL** stores persistent application data, while **Redis** supports low-latency application state and caching where configured.
-
-<p align="left">
+<p align="center">
   <img src="./docs/images/hld.drawio.png"
-       alt="CyberShield High Level Design"
-       width="88%">
+       alt="CyberShield High-Level Design"
+       width="92%">
 </p>
 
-### API Flow
+<p align="center">
+  <sub>High-level architecture and service boundaries.</sub>
+</p>
 
-<p align="left">
+### API Request Flow
+
+<p align="center">
   <img src="./docs/images/api-flow.drawio.png"
        alt="CyberShield API Flow"
-       width="88%">
+       width="92%">
 </p>
+
+Requests are routed through the API gateway before they reach backend services.
+
+This keeps authentication and access-control decisions outside the detection engine.
 
 ### Authentication Flow
 
-<p align="left">
+<p align="center">
   <img src="./docs/images/auth-flow.drawio.png"
        alt="CyberShield Authentication Flow"
-       width="88%">
+       width="90%">
 </p>
+
+Protected workflows use JWT-based authentication with role-aware authorization.
 
 ### Deployment Architecture
 
-<p align="left">
+<p align="center">
   <img src="./docs/images/deployment_architecture.drawio.png"
        alt="CyberShield Deployment Architecture"
-       width="88%">
+       width="92%">
 </p>
 
-Editable architecture diagrams are available in [`docs/diagrams/`](./docs/diagrams/).
+The frontend and backend services are deployed independently to make the platform easier to scale and update.
 
-More system-design documentation is available in [`docs/SYSTEM_DESIGN.md`](./docs/SYSTEM_DESIGN.md).
+## 🔍 How a Threat Moves Through CyberShield
 
-## 🔎 Low-Level Design
+```text
+Security Input
+     |
+     v
+API Gateway
+     |
+     v
+Authentication + RBAC
+     |
+     v
+Detection / Analysis
+     |
+     +---------> Threat Intelligence
+     |
+     +---------> Attack Graph
+     |
+     +---------> MITRE ATT&CK
+     |
+     +---------> Vulnerability Context
+     |
+     v
+Risk Evaluation
+     |
+     v
+Response Recommendation
+     |
+     +-------- Low Risk --------> Automated Playbook
+     |
+     +-------- Higher Risk -----> Human Approval
+                                    |
+                                    v
+                               Response Action
+                                    |
+                                    v
+                                Audit Trail
+```
 
-### Entity Relationship Model
+## ✨ Core Features
 
-<p align="left">
-  <img src="./docs/images/ER_Diagram_Clean.drawio.png"
-       alt="CyberShield Entity Relationship Diagram"
-       width="86%">
-</p>
+### 🔎 Threat Intelligence
 
-### Feature Workflow
+CyberShield brings multiple investigation signals into one workflow.
 
-<p align="left">
-  <img src="./docs/images/feature-workflow.drawio.png"
-       alt="CyberShield Feature Workflow"
-       width="88%">
-</p>
+- URL analysis
+- IP reputation
+- domain intelligence
+- SSL information
+- WHOIS inspection
+- IOC search
+- external threat-feed connectors
+- phishing analysis
 
-### Threat Processing Pipeline
+### 📧 Email Security
 
-<p align="left">
-  <img src="./docs/images/threat-pipeline.drawio.png"
-       alt="CyberShield Threat Pipeline"
-       width="88%">
-</p>
+The email-analysis workflow supports:
 
-### Response Flow
+- header inspection
+- SPF validation
+- DKIM checks
+- DMARC checks
+- sender-domain analysis
+- spoofing indicators
 
-<p align="left">
-  <img src="./docs/images/response-flow.drawio.png"
-       alt="CyberShield Response Flow"
-       width="88%">
-</p>
+### 🕸️ Attack Graph Intelligence
 
-## 🧮 Algorithm Engineering
+Infrastructure is represented as a directed weighted graph.
 
-CyberShield models infrastructure assets and trust relationships as a directed weighted graph.
+The attack-graph subsystem supports:
 
-The attack-graph subsystem uses:
+- BFS minimum-hop paths
+- Dijkstra lowest-cost paths
+- DFS blast-radius analysis
+- critical-asset discovery
+- compromise reachability
+- remediation prioritization
+- containment simulation
 
-| Algorithm / Structure | Purpose |
-|---|---|
-| BFS | Minimum-hop attack paths |
-| Dijkstra | Lowest-cost attack paths |
-| DFS | Blast-radius and compromise reachability |
-| Hash Maps / Sets | Asset and membership lookup |
-| Priority Queue | Remediation ranking |
-| Adjacency Lists | Memory-efficient graph storage |
+### 🧯 Incident Response
 
-### Critical-Asset Discovery Optimization
+Response workflows distinguish between actions that can be automated and actions that should require explicit analyst approval.
 
-The earlier implementation independently ran Dijkstra for each critical asset.
+- automated low-risk playbooks
+- analyst approval workflows
+- incident-state transitions
+- remediation history
+- response orchestration
+- audit logging
 
-Approximate complexity:
+### 🦠 Malware Analysis
+
+- YARA rules
+- IOC detection
+- signature-based analysis
+
+### 🧭 MITRE ATT&CK
+
+Findings can be mapped to ATT&CK techniques and tactics to provide additional context around the stage of an attack.
+
+## 🧠 Algorithm Engineering
+
+One of the main engineering improvements in CyberShield was made inside the attack-graph subsystem.
+
+### Original Approach
+
+The initial critical-asset discovery implementation ran Dijkstra's algorithm independently for every critical asset.
+
+With `K` critical assets:
 
 ```text
 O(K × (V + E) log V)
 ```
 
-where `K` is the number of critical assets.
+This worked correctly, but scaled poorly as the number of critical assets increased.
 
-The implementation was redesigned around a single-source shortest-path traversal and hash-set membership checks.
+### Optimized Approach
+
+The implementation was redesigned to perform a single-source shortest-path traversal and use hash-set membership checks while evaluating critical assets.
 
 Approximate complexity:
 
@@ -167,20 +240,24 @@ Approximate complexity:
 O((V + E) log V + K)
 ```
 
-### Reproducible Benchmark
+### Benchmark Results
+
+The before and after implementations were evaluated using the same deterministic synthetic graph.
 
 | Metric | Before | After |
 |---|---:|---:|
-| Graph Nodes | 2,500 | 2,500 |
-| Graph Edges | 10,000 | 10,000 |
-| Critical Assets | 125 | 125 |
-| Mean Latency | 2434.16 ms | 0.84 ms |
-| Median Latency | 2461.10 ms | 0.83 ms |
-| P95 Latency | 2582.02 ms | 0.90 ms |
+| Nodes | 2,500 | 2,500 |
+| Edges | 10,000 | 10,000 |
+| Critical assets | 125 | 125 |
+| Mean latency | 2434.16 ms | 0.84 ms |
+| Median latency | 2461.10 ms | 0.83 ms |
+| P95 latency | 2582.02 ms | 0.90 ms |
 
-**Recorded median latency decreased from ~2.46 seconds to ~0.83 milliseconds.**
+**Median latency decreased from approximately 2.46 seconds to 0.83 milliseconds in the recorded benchmark.**
 
-That corresponds to approximately **99.97% lower median latency** for the benchmarked operation.
+That represents an approximate:
+
+## **99.97% reduction in median critical-asset discovery latency**
 
 The optimization was also validated against the complete test suite:
 
@@ -188,7 +265,7 @@ The optimization was also validated against the complete test suite:
 140 passed
 ```
 
-Evaluation artifacts:
+Benchmark artifacts are stored under:
 
 ```text
 evaluation/
@@ -198,51 +275,60 @@ evaluation/
 └── graph_algorithm_verified_run.txt
 ```
 
-## 🛠️ Tech Stack
+## 🔎 Low-Level Design
 
-| Layer | Technology |
-|---|---|
-| Frontend | React, Vite, Axios, Recharts, Lucide React |
-| API Gateway | Node.js, Express.js, JWT, Helmet, CORS, Rate Limiting |
-| Detection Engine | Python, FastAPI, scikit-learn, YARA, Nmap, WHOIS |
-| Database | PostgreSQL |
-| Caching / State | Redis |
-| Realtime | WebSockets |
-| Cloud | Microsoft Azure |
-| Deployment | Static Web Apps, Container Apps, Docker |
-| Testing | pytest, unit testing, integration testing |
+### Entity Relationship Model
 
-## 🧠 AI & Analytics
+<p align="center">
+  <img src="./docs/images/ER_Diagram_Clean.drawio.png"
+       alt="CyberShield Entity Relationship Diagram"
+       width="90%">
+</p>
 
-CyberShield uses ML and security analytics in selected workflows.
+The persistent data layer includes entities for:
 
-Current capabilities include:
+- users
+- roles
+- incidents
+- findings
+- audit records
+- operational state
 
-- phishing URL analysis
-- threat intelligence correlation
-- email spoofing detection
-- vulnerability prioritization
-- behavioural risk signals
-- event correlation
-- incident recommendation support
-- cyber-resilience scoring
+### Feature Workflow
 
-## 🔐 Security Controls
+<p align="center">
+  <img src="./docs/images/feature-workflow.drawio.png"
+       alt="CyberShield Feature Workflow"
+       width="92%">
+</p>
 
-The platform includes:
+### Threat Pipeline
 
-- JWT authentication
-- BCrypt password hashing
-- role-based access control
-- input validation
-- rate limiting
-- parameterized SQL
-- human approval for higher-risk actions
-- hash-chained audit records
-- protected API routes
-- secure Azure deployment
+<p align="center">
+  <img src="./docs/images/threat-pipeline.drawio.png"
+       alt="CyberShield Threat Processing Pipeline"
+       width="92%">
+</p>
 
-## 👥 Role-Based Access Control
+### Response Flow
+
+<p align="center">
+  <img src="./docs/images/response-flow.drawio.png"
+       alt="CyberShield Response Workflow"
+       width="92%">
+</p>
+
+Editable Draw.io source files are available in:
+
+[`docs/diagrams/`](./docs/diagrams/)
+
+Full system-design notes are available in:
+
+[`docs/SYSTEM_DESIGN.md`](./docs/SYSTEM_DESIGN.md)
+
+## 🔐 Authentication and RBAC
+
+CyberShield uses JWT authentication with role-based authorization.
 
 | Role | View Incidents | Run Playbook | Approve High-Risk Action | Manage Users |
 |---|:---:|:---:|:---:|:---:|
@@ -250,98 +336,145 @@ The platform includes:
 | Senior Analyst | ✅ | ✅ Low Risk | ✅ | ❌ |
 | SOC Lead | ✅ | ✅ | ✅ | ✅ |
 
-## 📋 Incident Lifecycle
+Authorization is enforced at the API gateway before protected requests reach downstream services.
+
+## 🧾 Auditable Incident Lifecycle
+
+CyberShield records important incident transitions instead of storing only the latest state.
 
 ```text
-Detected
+detected
    |
    v
-Triaged
+triaged
    |
    v
-Playbook Run
+playbook_run
    |
-   +----> Rejected
-   |
-   v
-Human Approved
+   +------> rejected
    |
    v
-Closed
+human_approved
+   |
+   v
+closed
 ```
 
-Important state transitions are written into the audit trail so that an incident can be reconstructed from its history.
+Audit records contain information such as:
 
-## 📡 Real-Time Workflow
+```text
+incident_id
+actor
+action
+payload_hash
+previous_hash
+timestamp
+```
 
-The API Gateway maintains WebSocket connections for active analyst sessions.
+Records are hash-chained using the previous record's hash.
 
-Security events such as:
+This allows the application to detect whether historical audit entries have been modified unexpectedly.
 
-- new incidents
-- response completion
+## ⚡ Real-Time SOC Updates
+
+CyberShield uses WebSockets to push updates to connected analyst sessions.
+
+Examples include:
+
+- newly created incidents
 - approval requests
-- threat updates
+- completed playbooks
+- threat-analysis results
+- response-state changes
 
-can be pushed to connected clients without requiring constant polling.
+This avoids relying only on dashboard polling.
 
-## 📂 Project Structure
+## 🛡️ Security Controls
 
-```text
-CyberShield/
-|
-├── client/
-│   ├── src/
-│   │   ├── components/
-│   │   ├── context/
-│   │   ├── hooks/
-│   │   ├── pages/
-│   │   ├── services/
-│   │   └── App.jsx
-│   └── package.json
-|
-├── api-gateway/
-│   ├── config/
-│   ├── middleware/
-│   ├── routes/
-│   ├── utils/
-│   ├── app.js
-│   └── server.js
-|
-├── detection-engine/
-│   ├── app/
-│   │   ├── attack_graph/
-│   │   │   ├── graph.py
-│   │   │   ├── pathfinder.py
-│   │   │   ├── blast_radius.py
-│   │   │   └── remediation.py
-│   │   └── ...
-│   ├── models/
-│   ├── rules/
-│   └── requirements.txt
-|
-├── docs/
-│   ├── diagrams/
-│   ├── images/
-│   └── SYSTEM_DESIGN.md
-|
-├── tests/
-│   ├── unit/
-│   ├── integration/
-│   └── scenarios/
-|
-├── evaluation/
-│   ├── baselines/
-│   ├── benchmark_graph_algorithms.py
-│   ├── graph_algorithm_benchmark_before.csv
-│   ├── graph_algorithm_benchmark_after.csv
-│   └── graph_algorithm_verified_run.txt
-|
-├── docker-compose.yml
-└── README.md
-```
+The application includes:
 
-## 📡 API Endpoints
+- JWT authentication
+- BCrypt password hashing
+- role-based access control
+- request validation
+- rate limiting
+- Helmet security headers
+- CORS restrictions
+- parameterized SQL queries
+- human approval for higher-risk actions
+- hash-chained audit records
+- secure cloud deployment
+
+### Rate Limits
+
+| Endpoint | Limit |
+|---|---:|
+| `/scan/url` | 30 requests/min per analyst |
+| `/scan/email` | 20 requests/min per analyst |
+| `/orchestrator/execute` | 5 requests/min per analyst |
+| `/auth/*` | 10 requests/min per IP |
+
+## 🤖 AI and Analytics
+
+CyberShield uses machine learning and analytics where they provide useful decision support.
+
+Current workflows include:
+
+| Capability | Purpose |
+|---|---|
+| URL analysis | suspicious URL classification |
+| Phishing detection | identify phishing indicators |
+| Vulnerability prioritization | rank findings using context |
+| Event correlation | connect related security events |
+| Behaviour analysis | identify unusual activity |
+| Incident recommendation | suggest response direction |
+| Resilience scoring | summarize organizational security posture |
+
+The system does not treat AI output as an automatic authority for high-impact response actions.
+
+Higher-risk remediation remains analyst-controlled.
+
+## 🛠️ Technology Stack
+
+| Layer | Technology |
+|---|---|
+| Frontend | React, Vite, Axios, Recharts, Lucide React |
+| API Gateway | Node.js, Express.js |
+| Detection Engine | Python, FastAPI |
+| ML | scikit-learn |
+| Graph Analysis | BFS, DFS, Dijkstra |
+| Malware Analysis | YARA |
+| Reconnaissance | Nmap, WHOIS |
+| Database | PostgreSQL |
+| Cache / State | Redis |
+| Realtime | WebSockets |
+| Authentication | JWT, BCrypt |
+| Cloud | Microsoft Azure |
+| Containers | Docker |
+| Testing | pytest |
+
+## 📦 Implemented Modules
+
+| Module | Description |
+|---|---|
+| SOC Dashboard | operational security overview |
+| URL Scanner | suspicious URL analysis |
+| Email Analyzer | authentication and spoofing analysis |
+| Reconnaissance | domain and network intelligence |
+| Threat Intelligence | IOC and reputation analysis |
+| MITRE ATT&CK | technique and tactic mapping |
+| Attack Graph | paths, reachability and blast radius |
+| Vulnerability Management | prioritization and risk scoring |
+| Breach Checker | credential exposure verification |
+| YARA Scanner | malware rule matching |
+| GoPhish Simulator | awareness workflows |
+| Response Orchestrator | incident response coordination |
+| Audit Engine | action and state history |
+| Cyber Resilience | security posture analytics |
+| SOC Community | shared threat intelligence |
+| Settings | workspace configuration |
+
+## 📡 API Surface
 
 <details>
 <summary><b>Authentication</b></summary>
@@ -405,7 +538,7 @@ POST /api/recon/full
 </details>
 
 <details>
-<summary><b>Cyber Resilience</b></summary>
+<summary><b>Incident Response</b></summary>
 
 ```http
 GET  /api/resilience/orchestrator/incidents
@@ -419,15 +552,65 @@ GET  /api/resilience/audit/verify
 
 </details>
 
-Interactive FastAPI documentation is available at:
+FastAPI also exposes interactive documentation at:
 
 ```text
 /docs
 ```
 
+## 📁 Repository Structure
+
+```text
+CyberShield/
+|
+├── client/
+│   └── src/
+│       ├── components/
+│       ├── context/
+│       ├── hooks/
+│       ├── pages/
+│       └── services/
+|
+├── api-gateway/
+│   ├── config/
+│   ├── middleware/
+│   ├── routes/
+│   └── utils/
+|
+├── detection-engine/
+│   ├── app/
+│   │   └── attack_graph/
+│   │       ├── graph.py
+│   │       ├── pathfinder.py
+│   │       ├── blast_radius.py
+│   │       └── remediation.py
+│   ├── models/
+│   └── rules/
+|
+├── docs/
+│   ├── diagrams/
+│   ├── images/
+│   └── SYSTEM_DESIGN.md
+|
+├── tests/
+│   ├── unit/
+│   ├── integration/
+│   └── scenarios/
+|
+├── evaluation/
+│   ├── baselines/
+│   ├── benchmark_graph_algorithms.py
+│   ├── graph_algorithm_benchmark_before.csv
+│   ├── graph_algorithm_benchmark_after.csv
+│   └── graph_algorithm_verified_run.txt
+|
+├── docker-compose.yml
+└── README.md
+```
+
 ## ⚙️ Local Setup
 
-### 1. Clone
+### 1. Clone the Repository
 
 ```bash
 git clone https://github.com/agrima08s010315/cybershield-project.git
@@ -446,10 +629,11 @@ npm run dev
 
 ```bash
 cd detection-engine
+
 python -m venv .venv
 ```
 
-Windows PowerShell:
+Windows:
 
 ```powershell
 .\.venv\Scripts\Activate.ps1
@@ -467,7 +651,7 @@ Install dependencies:
 pip install -r requirements.txt
 ```
 
-Start FastAPI:
+Run FastAPI:
 
 ```bash
 python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
@@ -513,18 +697,18 @@ VITE_API_BASE_URL=http://127.0.0.1:5000/api
 VITE_WS_URL=ws://127.0.0.1:5000/ws
 ```
 
-Do not commit production secrets or real third-party API keys.
+Do not commit production secrets or provider API keys.
 
 ## ☁️ Azure Deployment
 
-| Component | Azure Service |
+| Component | Deployment |
 |---|---|
 | Frontend | Azure Static Web Apps |
 | API Gateway | Azure Container Apps |
 | Detection Engine | Azure Container Apps |
-| Packaging | Docker |
+| Containers | Docker |
 
-Useful health checks include:
+Production checks include:
 
 ```http
 GET /health/live
@@ -534,9 +718,21 @@ GET /api/threats/recent
 GET /api/mitre
 ```
 
+Deployment validation should also cover:
+
+- HTTPS
+- WSS WebSockets
+- CORS
+- authentication
+- PostgreSQL connectivity
+- detection-engine connectivity
+- environment configuration
+
 ## 🧪 Testing
 
-Latest verified test run:
+CyberShield includes automated tests across graph analysis, incident workflows, security analytics, API behaviour, and audit integrity.
+
+Latest verified run:
 
 ```text
 140 passed
@@ -545,7 +741,7 @@ Latest verified test run:
 Coverage includes:
 
 - BFS minimum-hop paths
-- Dijkstra weighted paths
+- Dijkstra weighted attack paths
 - DFS blast-radius analysis
 - graph indexing
 - critical-asset discovery
@@ -554,45 +750,80 @@ Coverage includes:
 - event correlation
 - UEBA workflows
 - prediction workflows
-- response approval
+- response approvals
 - response execution
-- audit-chain verification
+- audit-chain integrity
 - API integration workflows
 
-## ⚠️ Current Limitations
+## 🔬 Reproducibility
 
-- MITRE mapping uses keyword-based classification rather than full ATT&CK Navigator integration.
-- Threat-feed coverage depends on provider API keys.
-- Some third-party services are rate limited or paid.
-- Network scanning can be restricted in cloud environments.
-- WebSocket behaviour depends on proxy and container configuration.
-- Redis is currently used for low-latency state and caching where configured.
-- CyberShield is a portfolio and defensive-security engineering project, not a production replacement for a commercial SIEM or EDR.
+Performance benchmark artifacts are committed under `evaluation/`.
 
-## 🌱 Planned Improvements
+This makes it possible to inspect:
 
-| Area | Direction |
+- the benchmark generator
+- before/after implementations
+- raw CSV output
+- the verified benchmark run
+
+The performance figures in this README refer to those recorded experiments rather than estimated values.
+
+## ⚠️ Known Limitations
+
+CyberShield is a portfolio and defensive-security engineering project, not a production replacement for Sentinel, Splunk, CrowdStrike, or a commercial SOAR platform.
+
+Current limitations include:
+
+- MITRE mapping currently uses keyword-oriented classification
+- threat-feed coverage depends on configured provider APIs
+- external intelligence services may be rate limited
+- network scanning can be restricted in cloud environments
+- WebSocket behaviour depends on proxy/container configuration
+- Redis is currently used for low-latency state/caching where configured
+- distributed queue behaviour has not been independently benchmarked end-to-end
+
+## 🌱 Roadmap
+
+| Area | Planned Direction |
 |---|---|
-| MITRE Heatmap | Interactive ATT&CK coverage visualization |
-| Behaviour Analytics | Per-asset behavioural baselines |
-| SIEM Integration | Normalized event export for Sentinel or Splunk |
-| Historical Graph Analysis | Persist and compare attack-path changes |
-| Kubernetes | Service orchestration and autoscaling |
-| Security Copilot | Read-only LLM assistant constrained by RBAC |
-| Streaming Analytics | Event Hubs or Kafka for larger event volumes |
+| ATT&CK Visualization | interactive ATT&CK coverage heatmap |
+| Behaviour Analytics | rolling asset baselines and anomaly scoring |
+| SIEM Integration | normalized event export for Sentinel / Splunk |
+| Threat Actor Context | confidence-scored IOC correlation |
+| Historical Attack Graphs | graph snapshots and path evolution |
+| Security Copilot | read-only RBAC-constrained assistant |
+| Kubernetes | AKS-based service orchestration |
+| Streaming Analytics | Event Hubs / Kafka for higher event volumes |
+
+## 🎯 What This Project Demonstrates
+
+CyberShield is primarily an exercise in connecting several software-engineering concerns inside one system:
+
+- **backend architecture**
+- **API design**
+- **graph algorithms**
+- **performance optimization**
+- **security engineering**
+- **machine learning integration**
+- **role-based authorization**
+- **real-time communication**
+- **testing**
+- **cloud deployment**
+- **human-in-the-loop decision workflows**
 
 ## 📚 Documentation
 
-| Resource | Link |
+| Resource | Location |
 |---|---|
-| System Design | [`docs/SYSTEM_DESIGN.md`](./docs/SYSTEM_DESIGN.md) |
-| High-Level Design | [`docs/images/hld.drawio.png`](./docs/images/hld.drawio.png) |
+| High-Level Architecture | [`docs/images/hld.drawio.png`](./docs/images/hld.drawio.png) |
 | API Flow | [`docs/images/api-flow.drawio.png`](./docs/images/api-flow.drawio.png) |
 | Authentication Flow | [`docs/images/auth-flow.drawio.png`](./docs/images/auth-flow.drawio.png) |
+| Entity Relationship Diagram | [`docs/images/ER_Diagram_Clean.drawio.png`](./docs/images/ER_Diagram_Clean.drawio.png) |
 | Feature Workflow | [`docs/images/feature-workflow.drawio.png`](./docs/images/feature-workflow.drawio.png) |
 | Response Flow | [`docs/images/response-flow.drawio.png`](./docs/images/response-flow.drawio.png) |
 | Threat Pipeline | [`docs/images/threat-pipeline.drawio.png`](./docs/images/threat-pipeline.drawio.png) |
 | Editable Draw.io Files | [`docs/diagrams/`](./docs/diagrams/) |
+| System Design Notes | [`docs/SYSTEM_DESIGN.md`](./docs/SYSTEM_DESIGN.md) |
 | Evaluation Artifacts | [`evaluation/`](./evaluation/) |
 
 ## 📄 Responsible Use
@@ -600,11 +831,11 @@ Coverage includes:
 CyberShield is intended for:
 
 - defensive-security learning
-- authorized security testing
+- authorized testing
 - security engineering demonstrations
 - portfolio and research use
 
-Only run reconnaissance or scanning features against systems you own or have explicit authorization to test.
+Only run reconnaissance, scanning, or security-testing functionality against systems you own or have explicit permission to assess.
 
 ## 👩‍💻 Author
 
@@ -612,6 +843,8 @@ Only run reconnaissance or scanning features against systems you own or have exp
 
 Software Engineering · Applied AI · Cybersecurity
 
-[LinkedIn](https://www.linkedin.com/in/agrima-saxena-142960426/) · [GitHub](https://github.com/agrima08s010315) · [Email](mailto:agrimalc@gmail.com)
+[LinkedIn](https://www.linkedin.com/in/agrima-saxena-142960426/) ·
+[GitHub](https://github.com/agrima08s010315) ·
+[Email](mailto:agrimalc@gmail.com)
 
-**Live:** [CyberShield](https://mango-pebble-099d8de00.7.azurestaticapps.net/)
+⭐ If the project interests you, feel free to explore the architecture, benchmark the graph engine, or review the implementation.
