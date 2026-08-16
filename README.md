@@ -427,7 +427,7 @@ FastAPI also auto-generates interactive docs at `/docs`, covering URL Analysis, 
 ### Clone the repository
 
 ```bash
-git clone https://github.com/agrima150103/cybershield-project.git
+git clone https://github.com/agrima08s010315/cybershield-project.git
 cd cybershield-project
 ```
 
@@ -584,7 +584,7 @@ CyberShield is intended for educational, authorised defensive-security, and port
 ## 👩‍💻 Author
 
 **Agrima Saxena**
-🔗 [LinkedIn](https://linkedin.com/in/agrimasaxena) · 💻 [GitHub](https://github.com/agrima150103)
+🔗 [LinkedIn](https://www.linkedin.com/in/agrima-saxena-142960426/) · 💻 [GitHub](https://github.com/agrima08s010315)
 
 ---
 
