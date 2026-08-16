@@ -542,7 +542,6 @@ Coverage includes:
 - [ ] MITRE mapping
 - [ ] Response approvals & automated response
 - [ ] Audit verification
-- [ ] PDF report generation
 - [ ] WebSocket alerts
 - [ ] Admin operations & settings update
 - [ ] Mobile layout
@@ -589,3 +588,4 @@ CyberShield is intended for educational, authorised defensive-security, and port
 ---
 
 ⭐ **If you found this project interesting, consider giving it a star**
+
