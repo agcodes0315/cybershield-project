@@ -1,249 +1,161 @@
-# CyberShield — System Design Document
+# CyberShield: System Design Document
 
-> AI-Powered Security Operations Center (SOC) Platform for Critical National Infrastructure  
-> Author: Agrima Saxena · [GitHub](https://github.com/agrima08s010315/cybershield-project)
+AI-powered Security Operations Center (SOC) platform for critical national infrastructure.
 
-This document captures the architectural thinking behind CyberShield: how the system is decomposed, how data flows through it, how it scales, and why key design decisions were made.
+Author: Agrima Saxena
+GitHub: [github.com/agcodes0315](https://github.com/agcodes0315)
+Repository: [github.com/agcodes0315/cybershield-project](https://github.com/agcodes0315/cybershield-project)
+
+This document explains how CyberShield is put together: how the system is broken into components, how data moves through it, how it scales, and why certain design decisions were made.
 
 Diagrams referenced below live in `docs/diagrams/*.drawio` and can be opened with [diagrams.net](https://app.diagrams.net). Exported PNGs are stored in `docs/images/`.
 
 ---
 
-## 1. High-Level Design (HLD)
+## 1. High Level Design
 
-**Diagram:** `docs/diagrams/hld.drawio`
+Diagram: `docs/diagrams/hld.drawio`
 
-### 1.1 Component Overview
+### 1.1 Components
 
 | Component | Responsibility |
 |---|---|
-| **React Frontend** | SOC dashboard, analyst workspace, and feature modules; communicates with the backend over REST and WebSocket |
-| **Express API Gateway** | Single entry point for client traffic; owns authentication, RBAC, rate limiting, request validation, routing, and access control |
-| **FastAPI Detection Engine** | Stateless Python service responsible for ML URL scoring, email analysis, reconnaissance, YARA matching, threat-feed aggregation, and security analytics |
-| **PostgreSQL** | System of record for incidents, users, roles, scan history, responses, and audit data |
-| **Redis** | Supports low-latency state and caching; can also support asynchronous work distribution where configured |
-| **SOAR Orchestrator** | Applies risk thresholds and routes findings into automated or human-approved response paths |
-| **External Threat Feeds** | Integrations such as PhishTank, VirusTotal, Have I Been Pwned, Shodan, and AbuseIPDB; accessed by backend services, never directly by the browser |
+| React Frontend | SOC dashboard and analyst workspace. Talks to the backend over REST and WebSocket. |
+| Express API Gateway | Single entry point for all client traffic. Owns authentication, RBAC, rate limiting, request validation, and routing. |
+| FastAPI Detection Engine | Stateless Python service that handles ML based URL scoring, email analysis, reconnaissance, YARA matching, threat feed aggregation, and security analytics. |
+| PostgreSQL | System of record for incidents, users, roles, scan history, responses, and audit data. |
+| Redis | Low latency caching and, where configured, shared state for coordination across instances. |
+| SOAR Orchestrator | Applies risk thresholds and routes findings into automated or human approved response paths. |
+| External Threat Feeds | PhishTank, VirusTotal, Have I Been Pwned, Shodan, AbuseIPDB. Accessed only by backend services, never directly by the browser. |
 
-### 1.2 Why This Decomposition
+### 1.2 Why this decomposition
 
-- **Gateway as the sole entry point** — every request from React is authenticated and authorization-checked at one layer. Unauthorized requests are rejected before downstream compute is consumed.
-- **Detection engine kept stateless** — FastAPI holds no user-session state, so it can scale horizontally without requiring sticky sessions.
-- **Redis as a low-latency support layer** — repeat lookups and shared operational state can avoid unnecessary recomputation where configured.
-- **Independent service boundaries** — the gateway and detection engine can be deployed, scaled, and updated separately.
+Every request from the frontend passes through the gateway first, so authentication and authorization happen at a single, well tested layer. Unauthorized requests are rejected before any downstream compute is spent on them.
+
+The detection engine holds no session state, which means it can scale horizontally without needing sticky sessions.
+
+Redis sits in front of repeat lookups and shared operational state, so the same work isn't recomputed unnecessarily.
+
+Because the gateway and detection engine are separate services, they can be deployed, scaled, and updated independently of each other.
 
 ---
 
-## 2. Low-Level Design (LLD)
+## 2. Low Level Design
 
-**Diagrams:**  
-`docs/diagrams/threat-pipeline.drawio`  
-`docs/diagrams/auth-flow.drawio`  
-`docs/diagrams/response-flow.drawio`  
-`docs/diagrams/api-flow.drawio`  
+Diagrams:
+`docs/diagrams/threat-pipeline.drawio`
+`docs/diagrams/auth-flow.drawio`
+`docs/diagrams/response-flow.drawio`
+`docs/diagrams/api-flow.drawio`
 `docs/diagrams/feature-workflow.drawio`
 
-### 2.1 Threat Detection Pipeline
+### 2.1 Threat detection pipeline
 
 1. The client submits a URL or email to `/api/scan/url` or `/api/email/analyze`.
-2. The API gateway validates the request and applies authentication, RBAC, and rate limits.
-3. Where configured, Redis is checked for an existing result for the same indicator.
-4. On a cache miss, the detection engine extracts relevant features.
-5. URL workflows may use lexical, host, or reputation signals; email workflows inspect SPF, DKIM, DMARC, and header properties.
-6. Findings can be enriched with external threat-intelligence providers.
+2. The gateway validates the request and applies authentication, RBAC, and rate limits.
+3. Redis is checked for an existing result on the same indicator, where caching is configured.
+4. On a cache miss, the detection engine extracts the relevant features.
+5. URL workflows look at lexical, host, and reputation signals. Email workflows inspect SPF, DKIM, DMARC, and header properties.
+6. Findings are enriched with external threat intelligence where available.
 7. The detection model produces a risk score.
-8. Risk is combined with contextual information such as asset criticality.
+8. That score is combined with contextual information such as asset criticality.
 9. MITRE ATT&CK mapping adds technique and tactic context.
-10. The result is persisted to PostgreSQL.
-11. Where configured, the result is cached in Redis.
-12. New findings can be pushed to connected analyst sessions over WebSocket.
+10. The result is written to PostgreSQL.
+11. The result is cached in Redis, where configured.
+12. New findings are pushed to connected analyst sessions over WebSocket.
 
-### 2.2 Authentication Flow
+### 2.2 Authentication flow
 
-```text
+```
 Login
-  |
-  v
-Rate Limiter
-  |
-  v
-Lookup User
-  |
-  v
-BCrypt Password Check
-  |
-  v
-JWT Issued
-  |
-  v
-Client Sends Bearer Token
-  |
-  v
-Gateway Verifies Signature + Expiry
-  |
-  v
-RBAC Permission Check
-  |
-  v
-Route Handler
+  -> Rate Limiter
+  -> Lookup User
+  -> BCrypt Password Check
+  -> JWT Issued
+  -> Client Sends Bearer Token
+  -> Gateway Verifies Signature and Expiry
+  -> RBAC Permission Check
+  -> Route Handler
 ```
 
-The JWT carries the user's role context.
+The JWT carries the user's role context. Every protected request is checked before it's allowed to reach a downstream service.
 
-Every protected request is checked before the route is allowed to reach downstream services.
+### 2.3 Response orchestrator
 
-### 2.3 Response Orchestrator
-
-```text
-detected
-   |
-   v
-triaged
-   |
-   v
-playbook_run
-   |
-   +------> rejected
-   |            |
-   |            v
-   |         triaged
-   |
-   v
-human_approved
-   |
-   v
-closed
+```
+detected -> triaged -> playbook_run -> rejected -> triaged
+                              |
+                              -> human_approved -> closed
 ```
 
-Every important transition is written to `audit_log`.
+Every important transition is written to `audit_log`, so the full incident lifecycle can be reconstructed independently of whatever value is currently stored in `incidents.status`. Higher risk actions are routed through human approval before execution.
 
-This allows the complete incident lifecycle to be reconstructed independently of the current value stored in `incidents.status`.
+### 2.4 API flow
 
-Higher-risk actions are routed through the human approval path before execution.
-
-### 2.4 API Flow
-
-```text
+```
 React Component
-      |
-      v
-Axios Service Layer
-      |
-      v
-Express Route
-      |
-      v
-Middleware
-Helmet
-CORS
-JWT
-RBAC
-Rate Limit
-      |
-      v
-Route Decision
-   /       \
-  /         \
-CRUD       Analysis
- |            |
- v            v
-PostgreSQL   FastAPI
-  \            /
-   \          /
-      Result
-        |
-        v
-Persist / Cache
-        |
-        +------> WebSocket Broadcast
-        |
-        v
-HTTP Response
+  -> Axios Service Layer
+  -> Express Route
+  -> Middleware (Helmet, CORS, JWT, RBAC, Rate Limit)
+  -> Route Decision: CRUD (PostgreSQL) or Analysis (FastAPI)
+  -> Result
+  -> Persist / Cache
+  -> WebSocket Broadcast + HTTP Response
 ```
 
-### 2.5 End-to-End Analyst Workflow
+### 2.5 End to end analyst workflow
 
-```text
-Login
-  |
-  v
-Dashboard
-  |
-  v
-URL / Email Analysis
-  |
-  v
-Threat Intelligence Enrichment
-  |
-  v
-Optional Reconnaissance
-  |
-  v
-MITRE ATT&CK Mapping
-  |
-  v
-Risk Scoring
-  |
-  v
-Response Orchestrator
-  |
-  +------ Low Risk ------> Automated Playbook
-  |
-  +------ Higher Risk ---> Human Approval
-  |
-  v
-Cyber Resilience Update
-  |
-  v
-Audit / Reporting
+```
+Login -> Dashboard -> URL / Email Analysis -> Threat Intelligence Enrichment
+  -> Optional Reconnaissance -> MITRE ATT&CK Mapping -> Risk Scoring
+  -> Response Orchestrator
+       -> Low Risk: Automated Playbook
+       -> Higher Risk: Human Approval
+  -> Cyber Resilience Update -> Audit / Reporting
 ```
 
-WebSocket alerts operate alongside the workflow rather than only at its final stage.
+WebSocket alerts run alongside this workflow rather than only firing at the final step.
 
 ---
 
 ## 3. Database Schema
 
-**Diagram:** `docs/diagrams/database-er.drawio`
+Diagram: `docs/diagrams/database-er.drawio`
 
 | Table | Key Columns | Notes |
 |---|---|---|
-| `roles` | `id`, `name`, `permission_bitmask` | Analyst / Senior Analyst / SOC Lead |
-| `users` | `id`, `email`, `password_hash`, `role_id`, `created_at` | BCrypt-hashed credentials |
+| `roles` | `id`, `name`, `permission_bitmask` | Analyst, Senior Analyst, SOC Lead |
+| `users` | `id`, `email`, `password_hash`, `role_id`, `created_at` | Passwords stored as BCrypt hashes |
 | `threat_entries` | `id`, `type`, `target`, `risk_score`, `source`, `scanned_by`, `scanned_at` | One row per analyzed indicator |
 | `incidents` | `id`, `source_module`, `risk_score`, `status`, `threat_entry_id`, `assigned_analyst_id`, `created_at`, `updated_at` | Mutable while active |
-| `audit_log` | `id`, `incident_id`, `actor`, `action`, `payload_hash`, `prev_hash`, `timestamp` | Append-oriented, hash-chained audit trail |
+| `audit_log` | `id`, `incident_id`, `actor`, `action`, `payload_hash`, `prev_hash`, `timestamp` | Append only, hash chained audit trail |
 | `responses` | `id`, `incident_id`, `action_type`, `executed_by`, `status`, `executed_at` | Response history |
 
-### Relationships
+Relationships:
+`roles` to `users` is one to many.
+`users` to `threat_entries`, `incidents`, and `responses` is one to many.
+`threat_entries` to `incidents` is one to zero or one.
+`incidents` to `audit_log` and `responses` is one to many.
 
-- `roles` 1—N `users`
-- `users` 1—N `threat_entries`
-- `users` 1—N `incidents`
-- `users` 1—N `responses`
-- `threat_entries` 1—0..1 `incidents`
-- `incidents` 1—N `audit_log`
-- `incidents` 1—N `responses`
+### RBAC permission matrix
 
-### RBAC Permission Matrix
-
-| Role | View Incidents | Run Automated Playbook | Approve High-Risk Action | Manage Users |
+| Role | View Incidents | Run Automated Playbook | Approve High Risk Action | Manage Users |
 |---|:---:|:---:|:---:|:---:|
-| Analyst | ✅ | ❌ | ❌ | ❌ |
-| Senior Analyst | ✅ | ✅ Low Risk | ✅ | ❌ |
-| SOC Lead | ✅ | ✅ | ✅ | ✅ |
+| Analyst | Yes | No | No | No |
+| Senior Analyst | Yes | Low risk only | Yes | No |
+| SOC Lead | Yes | Yes | Yes | Yes |
 
-Permissions are checked at the API gateway before protected actions reach downstream services.
+Permissions are checked at the gateway before any protected action reaches a downstream service.
 
 ---
 
 ## 4. API Flow and Contracts
 
-**Diagram:** `docs/diagrams/api-flow.drawio`
+Diagram: `docs/diagrams/api-flow.drawio`
 
 Representative endpoint groups:
 
-```http
+```
 POST /api/auth/register
 POST /api/auth/login
 GET  /api/auth/me
@@ -272,40 +184,36 @@ GET  /api/resilience/audit/trail
 GET  /api/resilience/audit/verify
 ```
 
-FastAPI additionally exposes interactive OpenAPI documentation at:
+FastAPI also exposes interactive OpenAPI documentation at `/docs`.
 
-```text
-/docs
-```
-
-### Rate Limiting
+### Rate limiting
 
 | Endpoint Category | Threshold | Rationale |
 |---|---:|---|
 | `/scan/url` | 30 req/min per analyst | Prevent accidental scan bursts |
 | `/scan/email` | 20 req/min per analyst | Control heavier parsing workloads |
-| `/orchestrator/execute` | 5 req/min per analyst | Protect high-consequence actions |
-| `/auth/*` | 10 req/min per IP | Reduce brute-force attempts |
+| `/orchestrator/execute` | 5 req/min per analyst | Protect high consequence actions |
+| `/auth/*` | 10 req/min per IP | Reduce brute force attempts |
 
 ---
 
 ## 5. Authentication and Authorization
 
-**Diagram:** `docs/diagrams/auth-flow.drawio`
+Diagram: `docs/diagrams/auth-flow.drawio`
 
-Key design decisions:
+Key decisions:
 
-- **Stateless JWT authentication** — avoids requiring server-side session storage.
-- **Gateway-level RBAC** — authorization has one primary enforcement point.
-- **BCrypt password hashing** — plaintext passwords are not persisted.
-- **Role-aware middleware** — protected routes evaluate required permissions before execution.
-- **Rate limiting around authentication** — reduces brute-force attempts.
+Stateless JWT authentication avoids the need for server side session storage.
+Gateway level RBAC gives the system a single primary enforcement point.
+Passwords are hashed with BCrypt, so plaintext credentials are never persisted.
+Role aware middleware checks required permissions before a protected route executes.
+Rate limiting around authentication endpoints reduces brute force attempts.
 
 ---
 
 ## 6. Deployment Architecture
 
-**Diagram:** `docs/diagrams/deployment.drawio`
+Diagram: `docs/diagrams/deployment.drawio`
 
 | Component | Target |
 |---|---|
@@ -313,39 +221,23 @@ Key design decisions:
 | API Gateway | Azure Container Apps |
 | Detection Engine | Azure Container Apps |
 | Persistent Data | PostgreSQL |
-| Low-Latency State / Cache | Redis |
+| Low Latency State / Cache | Redis |
 
-### Deployment Flow
+### Deployment flow
 
-```text
-GitHub Repository
-      |
-      v
-CI / Build
-   /      \
-  /        \
-Frontend   Backend Images
-  |             |
-  v             v
-Azure Static   Azure Container
-Web Apps       Apps
-                  |
-                  v
-          API Gateway / Detection
-                  |
-          +-------+-------+
-          |               |
-          v               v
-     PostgreSQL         Redis
+```
+GitHub Repository -> CI / Build
+  -> Frontend build -> Azure Static Web Apps
+  -> Backend images -> Azure Container Apps (Gateway + Detection)
+                          -> PostgreSQL
+                          -> Redis
 ```
 
-The browser communicates with the frontend and API gateway over HTTPS/WSS.
+The browser talks to the frontend and the API gateway over HTTPS and WSS. Backend data services stay behind the application layer and are never exposed directly to the public client.
 
-Backend data services remain behind the application layer rather than being directly exposed to the public client.
+### Production health checks
 
-### Production Health Checks
-
-```http
+```
 GET /health/live
 GET /health
 GET /api/auth/me
@@ -353,107 +245,57 @@ GET /api/threats/recent
 GET /api/mitre
 ```
 
-Deployment verification should also include:
-
-- HTTPS
-- WSS WebSocket connectivity
-- CORS
-- authentication
-- database connectivity
-- detection-engine connectivity
-- environment variables
+Deployment verification also covers HTTPS, WSS connectivity, CORS, authentication, database connectivity, detection engine connectivity, and environment variables.
 
 ---
 
 ## 7. Scaling Considerations
 
-### Stateless Services
+**Stateless services.** The gateway and detection engine don't rely on in memory user sessions, which makes horizontal scaling straightforward.
 
-The API gateway and detection engine are designed so application instances do not depend on in-memory user sessions.
+**Redis.** Reduces repeated computation through cached lookups and can act as a shared coordination layer where needed.
 
-That makes horizontal scaling easier.
+**PostgreSQL.** Remains the system of record. The audit table grows continuously, so a longer term production setup would likely stream historical security events into a dedicated SIEM or analytics store rather than keeping everything in one operational database indefinitely.
 
-### Redis
+**WebSocket fan out.** With a single gateway instance, connected sessions can be tracked in memory. With multiple instances, a shared pub/sub mechanism is needed so alerts generated on one instance reach users connected to another. Redis pub/sub is a natural fit here since Redis is already part of the stack.
 
-Redis can reduce repeated computation through cached lookups and can provide a shared coordination layer where needed.
+**Higher event volume.** At larger scale, the architecture can evolve toward:
 
-### PostgreSQL
-
-PostgreSQL remains the persistent system of record.
-
-The audit table can grow continuously, so long-term production architecture would likely stream historical security events into a dedicated SIEM or analytics store rather than relying on one operational database forever.
-
-### WebSocket Fan-Out
-
-With one gateway instance, connected sessions can be tracked in memory.
-
-With multiple gateway instances, a shared pub/sub mechanism would be required so alerts generated on one instance can reach users connected to another.
-
-Redis pub/sub is a natural extension because Redis is already part of the architecture.
-
-### Higher Event Volume
-
-At higher scale, the architecture can evolve toward:
-
-```text
+```
 Redis / Local Coordination
-          |
-          v
-Kafka / Azure Event Hubs
-          |
-          v
-Distributed Detection Workers
-          |
-          v
-SIEM / Analytics Platform
+  -> Kafka / Azure Event Hubs
+  -> Distributed Detection Workers
+  -> SIEM / Analytics Platform
 ```
 
-AKS or another orchestration platform can become relevant if the service topology grows beyond what is practical to manage with independent Container Apps.
+AKS or another orchestration platform becomes relevant once the service topology grows beyond what's practical to manage with independent Container Apps.
 
 ---
 
 ## 8. Security and Trust Boundaries
 
-CyberShield separates several trust boundaries explicitly.
+**Browser to API Gateway.** The browser is treated as untrusted. Authentication, validation, RBAC, and rate limiting all happen before any protected action proceeds.
 
-### Browser → API Gateway
+**API Gateway to Detection Engine.** The detection engine is not meant to become a second public facing authentication surface. The gateway controls who can invoke analysis workflows.
 
-The browser is treated as untrusted.
+**Detection Engine to External Providers.** Third party threat intelligence responses are treated as external evidence, not absolute truth. Failures, rate limits, and conflicting signals from these providers must never silently bypass application logic.
 
-Authentication, validation, RBAC, and rate limiting occur before protected actions proceed.
-
-### API Gateway → Detection Engine
-
-The detection engine is not intended to become another public authentication surface.
-
-The gateway controls who may invoke analysis workflows.
-
-### Detection Engine → External Providers
-
-Third-party threat-intelligence responses are treated as external evidence, not absolute truth.
-
-External API failures, rate limits, and conflicting signals must not silently bypass application logic.
-
-### Application → Audit Trail
-
-Security-relevant actions should generate traceable audit events.
-
-Hash chaining provides a mechanism for detecting unexpected historical modification.
+**Application to Audit Trail.** Security relevant actions generate traceable audit events. Hash chaining gives the system a way to detect unexpected changes to historical records.
 
 ---
 
-## 9. Key Design Trade-Offs
+## 9. Key Design Trade-offs
 
-| Decision | Benefit | Trade-Off |
+| Decision | Benefit | Trade-off |
 |---|---|---|
-| Separate Express and FastAPI services | Clear language/service boundaries | More deployment complexity |
-| JWT authentication | Horizontal scalability | Token revocation requires additional design |
-| Gateway-level RBAC | Centralized authorization | Gateway becomes a critical enforcement point |
-| PostgreSQL as system of record | Strong relational consistency | Can become a scaling constraint |
-| Redis caching | Faster repeated lookups | Cache invalidation must be handled correctly |
-| Human approval for higher-risk actions | Safer remediation | Slower than fully autonomous response |
-| WebSockets | Immediate analyst updates | Multi-instance fan-out needs shared pub/sub |
-| External threat feeds | Better contextual enrichment | Availability and rate limits are outside system control |
+| Separate Express and FastAPI services | Clear language and service boundaries | More deployment complexity |
+| JWT authentication | Horizontal scalability | Token revocation needs extra design |
+| Gateway level RBAC | Centralized authorization | Gateway becomes a critical enforcement point |
+| PostgreSQL as system of record | Strong relational consistency | Can become a scaling constraint over time |
+| Redis caching | Faster repeated lookups | Cache invalidation has to be handled correctly |
+| Human approval for high risk actions | Safer remediation | Slower than a fully autonomous response |
+| WebSockets | Immediate analyst updates | Multi instance fan out needs shared pub/sub |
+| External threat feeds | Better contextual enrichment | Availability and rate limits are outside the system's control |
 
 ---
 
@@ -461,7 +303,7 @@ Hash chaining provides a mechanism for detecting unexpected historical modificat
 
 | # | Diagram | File |
 |---|---|---|
-| 1 | High-Level Architecture | `docs/diagrams/hld.drawio` |
+| 1 | High Level Architecture | `docs/diagrams/hld.drawio` |
 | 2 | Threat Detection Pipeline | `docs/diagrams/threat-pipeline.drawio` |
 | 3 | Authentication Flow | `docs/diagrams/auth-flow.drawio` |
 | 4 | Response Orchestrator | `docs/diagrams/response-flow.drawio` |
@@ -470,63 +312,26 @@ Hash chaining provides a mechanism for detecting unexpected historical modificat
 | 7 | API Flow | `docs/diagrams/api-flow.drawio` |
 | 8 | Feature Workflow | `docs/diagrams/feature-workflow.drawio` |
 
-### Diagram Color Legend
+### Diagram color legend
 
 | Color | Meaning |
 |---|---|
-| 🔵 Blue | Frontend / client-facing components |
-| 🟢 Green | Gateway / orchestration |
-| 🟠 Orange | Detection / compute |
-| 🔴 Red | Persistent data |
-| 🟡 Yellow | Cache / coordination / decision points |
-| 🟣 Purple | Cloud infrastructure |
-| ⚪ Grey dashed | External systems |
+| Blue | Frontend / client facing components |
+| Green | Gateway / orchestration |
+| Orange | Detection / compute |
+| Red | Persistent data |
+| Yellow | Cache / coordination / decision points |
+| Purple | Cloud infrastructure |
+| Grey dashed | External systems |
 
 ### Exporting PNGs
 
-Open each `.drawio` file using [diagrams.net](https://app.diagrams.net):
-
-```text
-File
-  ↓
-Open From
-  ↓
-Device
-```
-
-Then export using:
-
-```text
-File
-  ↓
-Export As
-  ↓
-PNG
-```
-
-Recommended settings:
-
-```text
-Scale: 2x
-Transparent background: Off
-Destination: docs/images/
-```
-
-Use a matching filename for each exported diagram.
-
-Example:
-
-```text
-docs/diagrams/hld.drawio
-        ↓
-docs/images/hld.drawio.png
-```
+Open each `.drawio` file in [diagrams.net](https://app.diagrams.net) via File, Open From, Device. Export with File, Export As, PNG, using scale 2x and transparent background off, saving to `docs/images/` with a matching filename. For example, `docs/diagrams/hld.drawio` exports to `docs/images/hld.drawio.png`.
 
 ---
 
 ## Repository
 
-**CyberShield:**  
-https://github.com/agrima08s010315/cybershield-project
+CyberShield: [github.com/agcodes0315/cybershield-project](https://github.com/agcodes0315/cybershield-project)
 
-**Author:** Agrima Saxena
+Author: Agrima Saxena
