@@ -14,7 +14,7 @@
 
 <br>
 
-**Designed and built by Agrima Saxena as a security engineering project focused on detection pipelines, graph algorithms, explainable risk analysis, response orchestration and cloud-ready system design.**
+**Designed and built as a security engineering project focused on detection pipelines, graph algorithms, explainable risk analysis, response orchestration and cloud-ready system design.**
 
 ---
 
@@ -1111,5 +1111,6 @@ Only run reconnaissance, scanning or other security-testing functionality agains
 <img src="https://img.shields.io/badge/GitHub-View%20Repository-181717?style=flat-square&logo=github&logoColor=white"
      alt="CyberShield Repository">
 </a>
+
 
 **CyberShield explores what happens when detection, intelligence, graph analysis and response are treated as one connected security system rather than isolated tools.**
